@@ -10,6 +10,7 @@ export default function App() {
   let [characteristic, setCharacteristic] = useState<Characteristic|null>(null);
   let [wall, setWall] = useState<number>(-1);
   React.useEffect(() => {
+    if(characteristic !== null) return;
     const subscription = manager.onStateChange((state) => {
         if (state === 'PoweredOn') {
           manager.startDeviceScan(null, null, (error, device) => {
@@ -19,6 +20,9 @@ export default function App() {
             }
             if (device.name === 'OctaWallTimer') {   
               manager.stopDeviceScan();
+              device.onDisconnected((error, device) => {
+                setCharacteristic(null);
+              })
               device.connect()
               .then((device) => {
                   return device.discoverAllServicesAndCharacteristics()
@@ -38,9 +42,12 @@ export default function App() {
         }
     }, true);
     return () => subscription.remove();
-  }, [manager]);
+  }, [manager, characteristic]);
 
   useEffect(() => {
+    if(characteristic === null){
+      return;
+    }
     const id = setInterval(() => {
       characteristic?.read().then(c => c.value == null ? -1 : setWall(base64.decode(c.value).charCodeAt(0)));
     }, 500);
