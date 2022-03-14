@@ -58,7 +58,8 @@ export default function App() {
   
   return (
     <View style={styles.container}>
-      <Text>Sciana: {wall}</Text>
+      <Text>Połączono: {characteristic === null ? "Nie": "Tak"}</Text>
+      {characteristic !== null && <Text>Sciana: {wall}</Text>}
       <StatusBar style="auto" />
     </View>
   );
