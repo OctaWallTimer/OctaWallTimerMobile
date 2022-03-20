@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { register } from '../API';
 import { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
@@ -11,26 +12,41 @@ export default function RegisterScreen(props: Props) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const onRegister = useCallback(() => {
-    console.log(name, password);
-  }, [name, password]);
+    if(password !== password2){
+      setError("Hasła się nie zgadzają!");
+      return;
+    }
+    setLoading(true);
+
+    register(name, password).then(token => {
+      setLoading(false);
+      props.navigation.navigate('Home');
+    }).catch(error => {
+      setLoading(false);
+      setError(error);
+    })
+  }, [name, password, password2]);
   const onLogin = useCallback(() => {
       props.navigation.navigate('Login');
   }, []);
   return (
     <View style={styles.container}>
       <Text style={{fontSize: 25, marginBottom: 40}}>Zarejestruj się</Text>
+      <Text style={{color: '#ff3020'}}>{error}</Text>
       <View>
         <Text>Login</Text>
-        <TextInput style={styles.input} onChangeText={text => setName(text)} value={name} focusable={true}/>
+        <TextInput style={styles.input} onChangeText={text => setName(text)} value={name} editable={!loading}/>
       </View>
       <View>
         <Text>Hasło</Text>
-        <TextInput style={styles.input} onChangeText={text => setPassword(text)} value={password}/>
+        <TextInput style={styles.input} onChangeText={text => setPassword(text)} value={password} editable={!loading} secureTextEntry={true}/>
       </View>
       <View>
         <Text>Potwierdź hasło</Text>
-        <TextInput style={styles.input} onChangeText={text => setPassword2(text)} value={password2}/>
+        <TextInput style={styles.input} onChangeText={text => setPassword2(text)} value={password2} secureTextEntry={true}/>
       </View>
       <Pressable onPress={onRegister} style={{backgroundColor: '#ff5010', paddingHorizontal: 20, paddingVertical: 5,marginVertical: 10, borderRadius: 8}}>
         <Text style={{color: '#fff'}}>Zarejestruj</Text>

@@ -7,6 +7,13 @@ export const setToken = async (token: string) => {
         console.error(error);
     }
 };
+export const clearToken = async () => {
+    try {
+        await AsyncStorage.removeItem('accessToken');
+    } catch (error) {
+        console.error(error);
+    }
+};
 export const getToken = async (): Promise<string | null> => {
     try {
         return (await AsyncStorage.getItem('accessToken')) ?? "";

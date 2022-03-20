@@ -1,29 +1,42 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import base64 from 'react-native-base64'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 
 import { manager, SERVICE_UUID, CHARACTERISTIC_UUID } from '../BLE';
 import { Characteristic } from 'react-native-ble-plx';
-import { getToken } from '../Storage';
-import { RootStackParamList } from '../types';
+import { clearToken, getToken, setToken } from '../Storage';
+import { RootStackParamList, User } from '../types';
+import { me } from '../API';
+import { SafeAreaView } from 'react-navigation';
 
 
   
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen(props: Props) {
-    useEffect(() => {
-        getToken().then(token => {
-            if(token == null || token.length < 10){
-                props.navigation.navigate('Login');
-                return;
-            }
+  const [user, setUser] = useState<User | null>(null);
+  useEffect(() => {
+      getToken().then(token => {
+          if(token == null || token.length < 10){
+              props.navigation.navigate('Login');
+              return;
+          }else{
+            me().then(user => {
+              setUser(user);
+            }).catch(() => {
+              props.navigation.navigate('Login');
+            })
+          }
 
-        })
-    }, [])
+      })
+  }, []);
+  const logout = useCallback(() => {
+    clearToken();
+    props.navigation.navigate('Login');
+  }, [])
   let [characteristic, setCharacteristic] = useState<Characteristic|null>(null);
   let [wall, setWall] = useState<number>(-1);
   React.useEffect(() => {
@@ -71,14 +84,24 @@ export default function HomeScreen(props: Props) {
     return () => clearInterval(id);
   }, [characteristic]);
 
-
+  if(user == null){
+    return <View style={styles.container}>
+      <ActivityIndicator/>
+    </View>;
+  }
   
   return (
-    <View style={styles.container}>
-      <Text>Połączono: {characteristic === null ? "Nie": "Tak"}</Text>
-      {characteristic !== null && <Text>Sciana: {wall}</Text>}
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView>
+      <View style={{padding: 10, backgroundColor: '#444', display: 'flex', flexDirection: 'row'}}>
+        <Text style={{color: '#fff', flexGrow: 1}}>Zalogowano jako: {user.name}</Text>
+        <Pressable onPress={logout}><Text style={{textDecorationLine: 'underline', color: '#fff'}}>Wyloguj</Text></Pressable>
+      </View>
+      <View>
+        <Text>Połączono: {characteristic === null ? "Nie": "Tak"}</Text>
+        {characteristic !== null && <Text>Sciana: {wall}</Text>}
+        <StatusBar style="auto" />
+      </View>
+    </SafeAreaView>
   );
 }
 
