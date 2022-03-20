@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import base64 from 'react-native-base64'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -30,7 +30,6 @@ export default function HomeScreen(props: Props) {
               props.navigation.navigate('Login');
             })
           }
-
       })
   }, []);
   const logout = useCallback(() => {
@@ -76,13 +75,41 @@ export default function HomeScreen(props: Props) {
 
   useEffect(() => {
     if(characteristic === null){
+      setWall(-1);
       return;
     }
     const id = setInterval(() => {
-      characteristic?.read().then(c => c.value == null ? -1 : setWall(base64.decode(c.value).charCodeAt(0)));
+      characteristic?.read().then(c => setWall(c.value == null ? -1 : base64.decode(c.value).charCodeAt(0)));
     }, 500);
     return () => clearInterval(id);
   }, [characteristic]);
+
+
+  const [lastWall, setLastWall] = useState(-1);
+  const [wallChangeTime, setWallChangeTime] = useState(Date.now());
+  useEffect(() => {
+    if(lastWall !== wall){
+      setWallChangeTime(Date.now());
+      setLastWall(wall);
+      setElapsedTime(0);
+    }
+  }, [lastWall, wall])
+
+  const [elapsedTime, setElapsedTime] = useState(0);
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setElapsedTime(Date.now() - wallChangeTime);
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [wallChangeTime]);
+
+  const formatElapsedtime = (num: number) => {
+    num /= 1000;
+    if(num < 60){
+      return Math.round(num) + "s";
+    }
+    return Math.round(num/60) + "min";
+  }
 
   if(user == null){
     return <View style={styles.container}>
@@ -91,15 +118,19 @@ export default function HomeScreen(props: Props) {
   }
   
   return (
-    <SafeAreaView>
+    <SafeAreaView style={styles.container}>
       <View style={{padding: 10, backgroundColor: '#444', display: 'flex', flexDirection: 'row'}}>
         <Text style={{color: '#fff', flexGrow: 1}}>Zalogowano jako: {user.name}</Text>
         <Pressable onPress={logout}><Text style={{textDecorationLine: 'underline', color: '#fff'}}>Wyloguj</Text></Pressable>
       </View>
-      <View>
-        <Text>Połączono: {characteristic === null ? "Nie": "Tak"}</Text>
-        {characteristic !== null && <Text>Sciana: {wall}</Text>}
-        <StatusBar style="auto" />
+      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+        {wall !== -1 && (
+          <View>
+            <Text style={{color: '#fff'}}>Sciana: {wall}</Text>
+            <Text style={{color: '#fff'}}>Czas: {formatElapsedtime(elapsedTime)}</Text>
+          </View>
+        )}
+        <StatusBar style="light" />
       </View>
     </SafeAreaView>
   );
@@ -107,9 +138,7 @@ export default function HomeScreen(props: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#222',
+    height: '100%',
   },
 });

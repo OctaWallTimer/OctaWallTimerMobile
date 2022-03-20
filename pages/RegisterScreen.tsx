@@ -34,18 +34,18 @@ export default function RegisterScreen(props: Props) {
   }, []);
   return (
     <View style={styles.container}>
-      <Text style={{fontSize: 25, marginBottom: 40}}>Zarejestruj się</Text>
-      <Text style={{color: '#ff3020'}}>{error}</Text>
-      <View>
-        <Text>Login</Text>
+      <Text style={{fontSize: 25, marginBottom: 30, color: '#ffffff'}}>Zarejestruj się</Text>
+      <Text style={{color: '#ff3020', marginBottom: 10}}>{error}</Text>
+      <View style={{marginBottom: 10}}>
+        <Text style={{color: '#fff'}}>Login</Text>
         <TextInput style={styles.input} onChangeText={text => setName(text)} value={name} editable={!loading}/>
       </View>
-      <View>
-        <Text>Hasło</Text>
+      <View style={{marginBottom: 10}}>
+        <Text style={{color: '#fff'}}>Hasło</Text>
         <TextInput style={styles.input} onChangeText={text => setPassword(text)} value={password} editable={!loading} secureTextEntry={true}/>
       </View>
-      <View>
-        <Text>Potwierdź hasło</Text>
+      <View style={{marginBottom: 10}}>
+        <Text style={{color: '#fff'}}>Potwierdź hasło</Text>
         <TextInput style={styles.input} onChangeText={text => setPassword2(text)} value={password2} secureTextEntry={true}/>
       </View>
       <Pressable onPress={onRegister} style={{backgroundColor: '#ff5010', paddingHorizontal: 20, paddingVertical: 5,marginVertical: 10, borderRadius: 8}}>
@@ -54,7 +54,7 @@ export default function RegisterScreen(props: Props) {
       <Pressable onPress={onLogin} style={{marginVertical: 10, borderRadius: 8}}>
         <Text style={{color: '#666'}}>Masz juz konto? <Text style={{textDecorationColor: '#000', textDecorationStyle: 'solid', textDecorationLine: 'underline'}}>Zaloguj się</Text></Text>
       </Pressable>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </View>
   );
 }
@@ -62,13 +62,13 @@ export default function RegisterScreen(props: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
   },
   input: {
-    backgroundColor: '#ffffff', 
-    borderColor: '#ddd', 
+    backgroundColor: '#333', 
+    borderColor: '#666', 
     borderWidth: 2, 
     borderRadius:8, 
     padding:10, 
