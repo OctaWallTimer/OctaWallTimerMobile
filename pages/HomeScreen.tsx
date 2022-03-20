@@ -1,0 +1,92 @@
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import base64 from 'react-native-base64'
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+
+import { manager, SERVICE_UUID, CHARACTERISTIC_UUID } from '../BLE';
+import { Characteristic } from 'react-native-ble-plx';
+import { getToken } from '../Storage';
+import { RootStackParamList } from '../types';
+
+
+  
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+export default function HomeScreen(props: Props) {
+    useEffect(() => {
+        getToken().then(token => {
+            if(token == null || token.length < 10){
+                props.navigation.navigate('Login');
+                return;
+            }
+
+        })
+    }, [])
+  let [characteristic, setCharacteristic] = useState<Characteristic|null>(null);
+  let [wall, setWall] = useState<number>(-1);
+  React.useEffect(() => {
+    if(characteristic !== null) return;
+    const subscription = manager.onStateChange((state) => {
+        if (state === 'PoweredOn') {
+          manager.startDeviceScan(null, null, (error, device) => {
+            if (error || !device) {
+              console.log("Cant connect to device, " + error?.reason);
+              return
+            }
+            if (device.name === 'OctaWallTimer') {   
+              manager.stopDeviceScan();
+              device.onDisconnected((error, device) => {
+                setCharacteristic(null);
+              })
+              device.connect()
+              .then((device) => {
+                  return device.discoverAllServicesAndCharacteristics()
+              })
+              .then((device) => {
+                return device.readCharacteristicForService(SERVICE_UUID, CHARACTERISTIC_UUID);
+              })
+              .then((characteristic) => {
+                setCharacteristic(characteristic);
+              })
+              .catch((error) => {
+                console.log(error?.reason);
+              });
+            }
+          });
+          subscription.remove();
+        }
+    }, true);
+    return () => subscription.remove();
+  }, [manager, characteristic]);
+
+  useEffect(() => {
+    if(characteristic === null){
+      return;
+    }
+    const id = setInterval(() => {
+      characteristic?.read().then(c => c.value == null ? -1 : setWall(base64.decode(c.value).charCodeAt(0)));
+    }, 500);
+    return () => clearInterval(id);
+  }, [characteristic]);
+
+
+  
+  return (
+    <View style={styles.container}>
+      <Text>Połączono: {characteristic === null ? "Nie": "Tak"}</Text>
+      {characteristic !== null && <Text>Sciana: {wall}</Text>}
+      <StatusBar style="auto" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
