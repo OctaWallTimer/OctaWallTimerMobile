@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { getToken, setRefreshToken, setToken } from './Storage';
-import { User } from './types';
+import {Task, User} from './types';
 const baseUrl = 'http://130.162.43.223:3000';
 
 export const login = (name: string, password: string): Promise<string> => {
@@ -45,6 +45,8 @@ export const refresh = (token: string): Promise<string> => {
             }else{
                 reject(response.data.error);
             }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem");
         });
     })
 }
@@ -52,12 +54,56 @@ export const refresh = (token: string): Promise<string> => {
 export const me = async (): Promise<User> => {
     const token = await getToken();
     return new Promise((resolve, reject) => {
-        axios.post(`${baseUrl}/me`, {token}).then((response) => {
+        axios.post(`${baseUrl}/me`, {}, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
             if(response.data.success){
                 resolve(response.data.user as User);
             }else{
                 reject(response.data.error);
             }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem");
+        });
+    })
+}
+
+export const getTasks = async (): Promise<Task[]> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.get(`${baseUrl}/tasks`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if(response.data.success){
+                resolve(response.data.tasks as Task[]);
+            }else{
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
+        });
+    })
+}
+
+export const saveTask = async (name: string, color: string, icon: string): Promise<Task> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.post(`${baseUrl}/tasks`, {name, color, icon}, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if(response.data.success){
+                resolve(response.data.task as Task);
+            }else{
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
         });
     })
 }

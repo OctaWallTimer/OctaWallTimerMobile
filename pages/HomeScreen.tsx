@@ -1,23 +1,23 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {ActivityIndicator, Button, Pressable, StyleSheet, Text, View} from 'react-native';
 import base64 from 'react-native-base64'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 
 import { manager, SERVICE_UUID, CHARACTERISTIC_UUID } from '../BLE';
 import { Characteristic } from 'react-native-ble-plx';
-import { clearToken, getToken, setToken } from '../Storage';
-import { RootStackParamList, User } from '../types';
-import { me } from '../API';
+import {clearToken, getToken, getWallBindings, setToken} from '../Storage';
+import {RootStackParamList, Task, User} from '../types';
+import {getTasks, me} from '../API';
 import { SafeAreaView } from 'react-navigation';
 
-
-  
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen(props: Props) {
   const [user, setUser] = useState<User | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [bindings, setBindings] = useState<{ [id: number]: string } >({});
   useEffect(() => {
       getToken().then(token => {
           if(token == null || token.length < 10){
@@ -32,6 +32,19 @@ export default function HomeScreen(props: Props) {
           }
       })
   }, []);
+  useEffect(() => {
+    if(user == null){
+      return;
+    }
+    getTasks().then(tasks => {
+      setTasks(tasks);
+    }).catch(error => console.log(error));
+  }, [user]);
+  useEffect(() => {
+    getWallBindings().then(bindings => {
+      setBindings(bindings ?? {});
+    });
+  });
   const logout = useCallback(() => {
     clearToken();
     props.navigation.navigate('Login');
@@ -47,7 +60,7 @@ export default function HomeScreen(props: Props) {
               console.log("Cant connect to device, " + error?.reason);
               return
             }
-            if (device.name === 'OctaWallTimer') {   
+            if (device.name === 'OctaWallTimer') {
               manager.stopDeviceScan();
               device.onDisconnected((error, device) => {
                 setCharacteristic(null);
@@ -111,12 +124,21 @@ export default function HomeScreen(props: Props) {
     return Math.round(num/60) + "min";
   }
 
+  const getTask = useCallback(taskID => {
+    for (let i = 0; i < tasks.length; i++) {
+      if(tasks[i]._id == taskID){
+        return tasks[i];
+      }
+    }
+    return null;
+  }, [tasks]);
+
   if(user == null){
     return <View style={styles.container}>
       <ActivityIndicator/>
     </View>;
   }
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={{padding: 10, backgroundColor: '#444', display: 'flex', flexDirection: 'row'}}>
@@ -127,7 +149,9 @@ export default function HomeScreen(props: Props) {
         {wall !== -1 && (
           <View>
             <Text style={{color: '#fff'}}>Sciana: {wall}</Text>
+            {bindings[wall] && <Text style={{color: '#fff'}}>Aktualne zadanie: {getTask(bindings[wall])?.name}</Text>}
             <Text style={{color: '#fff'}}>Czas: {formatElapsedtime(elapsedTime)}</Text>
+            <Button title={"Przypisz zadanie"} onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}/>
           </View>
         )}
         <StatusBar style="light" />

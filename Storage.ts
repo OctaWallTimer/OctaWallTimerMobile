@@ -37,3 +37,18 @@ export const getRefreshToken = async (): Promise<string | null>  => {
     }
     return null;
 };
+export const setWallBindings = async (bindings: {[id: number] : string}) => {
+    try {
+        await AsyncStorage.setItem('bindings',JSON.stringify(bindings));
+    } catch (error) {
+        console.error(error);
+    }
+};
+export const getWallBindings = async (): Promise<{[id: number] : string} | null>  => {
+    try {
+        return JSON.parse(await AsyncStorage.getItem('bindings') ?? "{}");
+    } catch (error) {
+        console.error(error);
+    }
+    return null;
+};

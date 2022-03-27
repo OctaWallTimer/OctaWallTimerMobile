@@ -5,11 +5,12 @@ import { createSwitchNavigator, createAppContainer } from "react-navigation";
 import HomeScreen from './pages/HomeScreen';
 import LoginScreen from './pages/LoginScreen';
 import RegisterScreen from './pages/RegisterScreen';
+import ChangeWallBindingScreen from './pages/ChangeWallBindingScreen';
 
 
 
 export default function App() {
-  
+
   return (
     <AppContainer/>
   );
@@ -25,6 +26,9 @@ const AppNavigator = createSwitchNavigator({
   },
   Register: {
     screen: RegisterScreen
+  },
+  ChangeWallBinding: {
+    screen: ChangeWallBindingScreen
   }
 },{
   initialRouteName: "Home"
