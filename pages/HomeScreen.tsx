@@ -8,8 +8,8 @@ import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {manager, SERVICE_UUID, CHARACTERISTIC_UUID} from '../BLE';
 import {Characteristic} from 'react-native-ble-plx';
 import {clearToken, getToken, getWallBindings, setToken} from '../Storage';
-import {RootStackParamList, Task, User} from '../types';
-import {getTasks, me} from '../API';
+import {RootStackParamList, Task, TaskTime, User} from '../types';
+import {getTasks, getTaskTimes, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -17,6 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export default function HomeScreen(props: Props) {
     const [user, setUser] = useState<User | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [taskTimes, setTaskTimes] = useState<TaskTime[]>([]);
     const [bindings, setBindings] = useState<{ [id: number]: string }>({});
     useEffect(() => {
         let isMounted = true;
@@ -46,10 +47,24 @@ export default function HomeScreen(props: Props) {
             if (isMounted)
                 setTasks(tasks);
         }).catch(error => console.log(error));
+        getTaskTimes().then(times => {
+            if (isMounted)
+                setTaskTimes(times);
+        }).catch(error => console.log(error));
         return () => {
             isMounted = false;
         };
     }, [user]);
+    const taskTimesSummary = useMemo(() => {
+        let summary = {};
+        for (let i = 0; i < tasks.length; i++) {
+            summary[tasks[i].name] = taskTimes.filter(v => v.task == tasks[i]._id).reduce((prev, v) => {
+                return (prev + (v.end ? new Date(v.end) : new Date()).getTime() - new Date(v.start).getTime());
+            }, 0);
+        }
+        console.log(summary);
+        return summary;
+    }, [taskTimes, tasks])
     useEffect(() => {
         let isMounted = true;
         getWallBindings().then(bindings => {
@@ -120,6 +135,20 @@ export default function HomeScreen(props: Props) {
             setWallChangeTime(Date.now());
             setLastWall(wall);
             setElapsedTime(0);
+            if (wall >= 1 && wall <= 8 && bindings[wall]) {
+                saveTaskTime(bindings[wall]).then(time => {
+                    getTaskTimes().then(times => {
+                        setTaskTimes(times);
+                    });
+                }).catch(e => {});
+            }else{
+                saveTaskTime().then(d => {
+                }).catch(e => {
+                    getTaskTimes().then(times => {
+                        setTaskTimes(times);
+                    });
+                });
+            }
         }
     }, [lastWall, wall])
 
@@ -136,7 +165,7 @@ export default function HomeScreen(props: Props) {
         if (num < 60) {
             return Math.round(num) + "s";
         }
-        return Math.round(num / 60) + "min";
+        return Math.round(num / 60) + "min " + Math.round(num)%60 + "s";
     }
 
     const getTask = useCallback(taskID => {
@@ -172,6 +201,11 @@ export default function HomeScreen(props: Props) {
                                 onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}/>
                     </View>
                 )}
+                <View>
+                    {Object.keys(taskTimesSummary).map(keyName => (
+                        <Text key={keyName} style={{color: '#fff'}}>{keyName}: {formatElapsedtime(taskTimesSummary[keyName])}</Text>
+                    ))}
+                </View>
                 <StatusBar style="light"/>
             </View>
         </SafeAreaView>

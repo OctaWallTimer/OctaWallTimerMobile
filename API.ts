@@ -1,16 +1,17 @@
 import axios from 'axios';
-import { getToken, setRefreshToken, setToken } from './Storage';
-import {Task, User} from './types';
+import {getToken, setRefreshToken, setToken} from './Storage';
+import {Task, TaskTime, User} from './types';
+
 const baseUrl = 'http://130.162.43.223:3000';
 
 export const login = (name: string, password: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         axios.post(`${baseUrl}/login`, {name, password}).then((response) => {
-            if(response.data.success){
+            if (response.data.success) {
                 setToken(response.data.accessToken);
                 setRefreshToken(response.data.refreshToken);
                 resolve(response.data.accessToken);
-            }else{
+            } else {
                 reject(response.data.error);
             }
         }).catch(error => {
@@ -22,11 +23,11 @@ export const login = (name: string, password: string): Promise<string> => {
 export const register = (name: string, password: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         axios.post(`${baseUrl}/register`, {name, password}).then((response) => {
-            if(response.data.success){
+            if (response.data.success) {
                 setToken(response.data.accessToken);
                 setRefreshToken(response.data.refreshToken);
                 resolve(response.data.accessToken);
-            }else{
+            } else {
                 reject(response.data.error);
             }
         }).catch(error => {
@@ -38,11 +39,11 @@ export const register = (name: string, password: string): Promise<string> => {
 export const refresh = (token: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         axios.post(`${baseUrl}/refresh`, {token}).then((response) => {
-            if(response.data.success){
+            if (response.data.success) {
                 setToken(response.data.accessToken);
                 setRefreshToken(response.data.refreshToken);
                 resolve(response.data.accessToken);
-            }else{
+            } else {
                 reject(response.data.error);
             }
         }).catch(error => {
@@ -59,9 +60,9 @@ export const me = async (): Promise<User> => {
                 Authorization: `Bearer ${token}`
             }
         }).then((response) => {
-            if(response.data.success){
+            if (response.data.success) {
                 resolve(response.data.user as User);
-            }else{
+            } else {
                 reject(response.data.error);
             }
         }).catch(error => {
@@ -78,9 +79,9 @@ export const getTasks = async (): Promise<Task[]> => {
                 Authorization: `Bearer ${token}`
             }
         }).then((response) => {
-            if(response.data.success){
+            if (response.data.success) {
                 resolve(response.data.tasks as Task[]);
-            }else{
+            } else {
                 reject(response.data.error);
             }
         }).catch(error => {
@@ -97,9 +98,47 @@ export const saveTask = async (name: string, color: string, icon: string): Promi
                 Authorization: `Bearer ${token}`
             }
         }).then((response) => {
-            if(response.data.success){
+            if (response.data.success) {
                 resolve(response.data.task as Task);
-            }else{
+            } else {
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
+        });
+    })
+}
+
+export const getTaskTimes = async (): Promise<TaskTime[]> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.get(`${baseUrl}/time`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if (response.data.success) {
+                resolve(response.data.time as TaskTime[]);
+            } else {
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
+        });
+    })
+}
+
+export const saveTaskTime = async (task?: string): Promise<TaskTime> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.post(`${baseUrl}/time`, task !== undefined ? {task} : null, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if (response.data.success) {
+                resolve(response.data.time as TaskTime);
+            } else {
                 reject(response.data.error);
             }
         }).catch(error => {

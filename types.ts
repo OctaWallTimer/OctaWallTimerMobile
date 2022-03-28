@@ -15,3 +15,10 @@ export interface Task {
   color: string;
   icon: string;
 }
+export interface TaskTime {
+  _id: string;
+  user: string;
+  task: string;
+  start: Date;
+  end: Date;
+}
