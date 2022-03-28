@@ -18,10 +18,10 @@ export default function ChangeWallBindingScreen(props: Props) {
     const [tasks, setTasks] = useState<Task[]>([]);
     useEffect(() => {
         getToken().then(token => {
-            if(token == null || token.length < 10){
+            if (token == null || token.length < 10) {
                 props.navigation.navigate('Login');
                 return;
-            }else{
+            } else {
                 me().then(user => {
                     setUser(user);
                 }).catch(() => {
@@ -31,7 +31,7 @@ export default function ChangeWallBindingScreen(props: Props) {
         })
     }, []);
     useEffect(() => {
-        if(user == null){
+        if (user == null) {
             return;
         }
         getTasks().then(tasks => {
@@ -41,19 +41,19 @@ export default function ChangeWallBindingScreen(props: Props) {
 
     const setTask = useCallback((taskID) => {
         getWallBindings().then(bindings => {
-            if(!bindings){
-                bindings ={};
+            if (!bindings) {
+                bindings = {};
             }
             let keys: string[] = Object.keys(bindings);
             for (let i = 0; i < keys.length; i++) {
-                if(bindings[parseInt(keys[i])] == taskID){
+                if (bindings[parseInt(keys[i])] == taskID) {
                     delete bindings[parseInt(keys[i])];
                 }
             }
             bindings[wall] = taskID;
             setWallBindings(bindings);
             setLoading(false);
-            props.navigation.navigate('Home');
+            props.navigation.goBack()
         })
     }, [wall]);
     const onSave = useCallback(() => {
@@ -65,6 +65,9 @@ export default function ChangeWallBindingScreen(props: Props) {
             setError(error);
         });
     }, [name]);
+    const exit = useCallback(() => {
+        props.navigation.goBack()
+    }, [name]);
     return (
         <View style={styles.container}>
             <Text style={{fontSize: 25, marginBottom: 10, color: '#fff'}}>Numer aktualnej ścianki: {wall}</Text>
@@ -73,14 +76,14 @@ export default function ChangeWallBindingScreen(props: Props) {
                 <Text style={{fontSize: 20, marginBottom: 10, color: '#fff'}}>Aktualne zadania:</Text>
                 {tasks.length == 0 ? (
                     <Text style={{color: '#fff'}}>Brak zadań</Text>
-                ) : tasks.map(task =>(
+                ) : tasks.map(task => (
                     <Pressable onPress={() => setTask(task._id)} style={{
                         backgroundColor: '#444',
                         paddingHorizontal: 20,
                         paddingVertical: 5,
                         marginVertical: 10,
                         borderRadius: 8
-                    }}>
+                    }} key={task._id}>
                         <Text style={{color: '#fff'}}>{task.name}</Text>
                     </Pressable>
                 ))}
@@ -99,6 +102,15 @@ export default function ChangeWallBindingScreen(props: Props) {
             }}>
                 <Text style={{color: '#fff'}}>Zapisz</Text>
             </Pressable>
+            <Pressable onPress={exit} style={{
+                backgroundColor: '#666',
+                paddingHorizontal: 20,
+                paddingVertical: 5,
+                marginVertical: 10,
+                borderRadius: 8
+            }}>
+                <Text style={{color: '#fff'}}>Anuluj</Text>
+            </Pressable>
             <StatusBar style="light"/>
         </View>
     );
@@ -113,6 +125,7 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: '#333',
+        color: '#fff',
         borderColor: '#666',
         borderWidth: 2,
         borderRadius: 8,

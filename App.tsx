@@ -31,7 +31,9 @@ const AppNavigator = createSwitchNavigator({
     screen: ChangeWallBindingScreen
   }
 },{
-  initialRouteName: "Home"
+  initialRouteName: "Home",
+  resetOnBlur:false,
+  backBehavior:'history'
 });
 
 const AppContainer = createAppContainer(AppNavigator);
