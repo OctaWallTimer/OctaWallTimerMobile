@@ -1,6 +1,6 @@
 import {StatusBar} from 'expo-status-bar';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Button, Pressable, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import base64 from 'react-native-base64'
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
@@ -55,16 +55,6 @@ export default function HomeScreen(props: Props) {
             isMounted = false;
         };
     }, [user]);
-    const taskTimesSummary = useMemo(() => {
-        let summary = {};
-        for (let i = 0; i < tasks.length; i++) {
-            summary[tasks[i].name] = taskTimes.filter(v => v.task == tasks[i]._id).reduce((prev, v) => {
-                return (prev + (v.end ? new Date(v.end) : new Date()).getTime() - new Date(v.start).getTime());
-            }, 0);
-        }
-        console.log(summary);
-        return summary;
-    }, [taskTimes, tasks])
     useEffect(() => {
         let isMounted = true;
         getWallBindings().then(bindings => {
@@ -140,8 +130,9 @@ export default function HomeScreen(props: Props) {
                     getTaskTimes().then(times => {
                         setTaskTimes(times);
                     });
-                }).catch(e => {});
-            }else{
+                }).catch(e => {
+                });
+            } else {
                 saveTaskTime().then(d => {
                 }).catch(e => {
                     getTaskTimes().then(times => {
@@ -165,7 +156,7 @@ export default function HomeScreen(props: Props) {
         if (num < 60) {
             return Math.round(num) + "s";
         }
-        return Math.round(num / 60) + "min " + Math.round(num)%60 + "s";
+        return Math.round(num / 60) + "min " + Math.round(num) % 60 + "s";
     }
 
     const getTask = useCallback(taskID => {
@@ -176,6 +167,8 @@ export default function HomeScreen(props: Props) {
         }
         return null;
     }, [tasks]);
+
+    const [timeTableMode, setTimeTableMode] = useState('day');
 
     if (user == null) {
         return <View style={styles.container}>
@@ -190,21 +183,49 @@ export default function HomeScreen(props: Props) {
                 <Pressable onPress={logout}><Text
                     style={{textDecorationLine: 'underline', color: '#fff'}}>Wyloguj</Text></Pressable>
             </View>
-            <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-                {wall !== -1 && (
-                    <View>
-                        <Text style={{color: '#fff'}}>Sciana: {wall}</Text>
-                        {bindings[wall] &&
-                        <Text style={{color: '#fff'}}>Aktualne zadanie: {getTask(bindings[wall])?.name}</Text>}
-                        <Text style={{color: '#fff'}}>Czas: {formatElapsedtime(elapsedTime)}</Text>
-                        <Button title={"Przypisz zadanie"}
-                                onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}/>
+            <View>
+                {wall !== -1 ? (
+                    <View style={{
+                        padding: 10,
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <View>
+                            <Text style={{color: '#fff', fontSize: 18}}>Aktualne zadanie: </Text>
+                            {bindings[wall] ? (
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18
+                                }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime)})</Text>
+                            ) : (
+                                <Text style={{color: '#fff', fontSize: 18}}>Brak
+                                    ({formatElapsedtime(elapsedTime)})</Text>
+                            )}
+                        </View>
+                        <Pressable onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}>
+                            <Text style={{textDecorationLine: 'underline', color: '#fff'}}>
+                                Zmień zadanie
+                            </Text>
+                        </Pressable>
+                    </View>
+                ) : (
+                    <View style={{padding: 10, display: 'flex', flexDirection: 'row'}}>
+                        <Text style={{color: '#fff'}}>Brak połączenia z kostką</Text>
                     </View>
                 )}
-                <View>
-                    {Object.keys(taskTimesSummary).map(keyName => (
-                        <Text key={keyName} style={{color: '#fff'}}>{keyName}: {formatElapsedtime(taskTimesSummary[keyName])}</Text>
+            </View>
+            <View>
+                <View style={{display: 'flex', flexDirection: "row", justifyContent: 'space-around'}}>
+                    {[['day', 'Dziś'], ['week', 'Ten tydzień'], ['month', 'Ten miesiąc'], ['year', 'Ten rok']].map(el => (
+                        <Pressable onPress={() => setTimeTableMode(el[0])}>
+                            <Text style={{fontSize: 17, textDecorationLine: timeTableMode === el[0] ? 'none' : 'underline', color: timeTableMode !== el[0]? '#ccc': '#fff'}}>{el[1]}</Text>
+                        </Pressable>
                     ))}
+                </View>
+                <View>
+                    <Text style={{color: '#fff'}}>Statystyki z {timeTableMode}</Text>
                 </View>
                 <StatusBar style="light"/>
             </View>
