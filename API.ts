@@ -1,6 +1,6 @@
 import axios from 'axios';
 import {getToken, setRefreshToken, setToken} from './Storage';
-import {Task, TaskTime, User} from './types';
+import {Task, TaskTime, TimeTable, User} from './types';
 
 const baseUrl = 'http://130.162.43.223:3000';
 
@@ -138,6 +138,25 @@ export const saveTaskTime = async (task?: string): Promise<TaskTime> => {
         }).then((response) => {
             if (response.data.success) {
                 resolve(response.data.time as TaskTime);
+            } else {
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
+        });
+    })
+}
+
+export const getTimeTable = async (mode?: string): Promise<TimeTable[]> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.get(`${baseUrl}/timetable?mode=${mode}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if (response.data.success) {
+                resolve(response.data.data as TimeTable[]);
             } else {
                 reject(response.data.error);
             }

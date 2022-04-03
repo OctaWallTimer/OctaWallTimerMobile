@@ -22,3 +22,16 @@ export interface TaskTime {
   start: Date;
   end: Date;
 }
+
+export interface TimeTable{
+  start: number;
+  end: number;
+  tasks: {
+    [task: string]: number;
+  }
+}
+
+export type ChartTimeTable = {
+  day: string;
+  time: number;
+}

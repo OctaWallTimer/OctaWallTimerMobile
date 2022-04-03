@@ -3,13 +3,22 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import base64 from 'react-native-base64'
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {
+    VictoryArea,
+    VictoryAxis,
+    VictoryBar,
+    VictoryChart,
+    VictoryGroup, VictoryLegend,
+    VictoryStack,
+    VictoryTheme
+} from "victory-native";
 
 
 import {manager, SERVICE_UUID, CHARACTERISTIC_UUID} from '../BLE';
 import {Characteristic} from 'react-native-ble-plx';
 import {clearToken, getToken, getWallBindings, setToken} from '../Storage';
-import {RootStackParamList, Task, TaskTime, User} from '../types';
-import {getTasks, getTaskTimes, me, saveTaskTime} from '../API';
+import {ChartTimeTable, RootStackParamList, Task, TaskTime, TimeTable, User} from '../types';
+import {getTasks, getTaskTimes, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -17,7 +26,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export default function HomeScreen(props: Props) {
     const [user, setUser] = useState<User | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [taskTimes, setTaskTimes] = useState<TaskTime[]>([]);
     const [bindings, setBindings] = useState<{ [id: number]: string }>({});
     useEffect(() => {
         let isMounted = true;
@@ -46,10 +54,6 @@ export default function HomeScreen(props: Props) {
         getTasks().then(tasks => {
             if (isMounted)
                 setTasks(tasks);
-        }).catch(error => console.log(error));
-        getTaskTimes().then(times => {
-            if (isMounted)
-                setTaskTimes(times);
         }).catch(error => console.log(error));
         return () => {
             isMounted = false;
@@ -127,17 +131,13 @@ export default function HomeScreen(props: Props) {
             setElapsedTime(0);
             if (wall >= 1 && wall <= 8 && bindings[wall]) {
                 saveTaskTime(bindings[wall]).then(time => {
-                    getTaskTimes().then(times => {
-                        setTaskTimes(times);
-                    });
+                    //todo: refresh timetable
                 }).catch(e => {
                 });
             } else {
                 saveTaskTime().then(d => {
                 }).catch(e => {
-                    getTaskTimes().then(times => {
-                        setTaskTimes(times);
-                    });
+                    //todo: refresh timetable
                 });
             }
         }
@@ -151,10 +151,13 @@ export default function HomeScreen(props: Props) {
         return () => clearInterval(intervalId);
     }, [wallChangeTime]);
 
-    const formatElapsedtime = (num: number) => {
+    const formatElapsedtime = (num: number, short: boolean = false) => {
         num /= 1000;
         if (num < 60) {
             return Math.round(num) + "s";
+        }
+        if (short) {
+            return Math.round(num / 60) + "min";
         }
         return Math.round(num / 60) + "min " + Math.round(num) % 60 + "s";
     }
@@ -169,12 +172,87 @@ export default function HomeScreen(props: Props) {
     }, [tasks]);
 
     const [timeTableMode, setTimeTableMode] = useState('day');
-
+    const [timeTable, setTimeTable] = useState<TimeTable[]>([]);
+    const chartData = useMemo(() => {
+        let ret: { name: string, data: ChartTimeTable[] }[] = [];
+        for (let taskId = 0; taskId < tasks.length; taskId++) {
+            const task = tasks[taskId];
+            let data = [];
+            switch (timeTableMode) {
+                case 'day':
+                    for (let hour = 0; hour < 23; hour++) {
+                        data.push({
+                            day: `${hour < 10 ? '0' + hour : hour}:00:00`,
+                            time: timeTable[hour].tasks[task._id] ?? 0
+                        })
+                    }
+                    break;
+                case 'week':
+                    for (let day = 0; day < 7; day++) {
+                        const start = new Date();
+                        start.setDate(start.getDate() - 6 + day);
+                        data.push({
+                            day: ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sb"][start.getDay()],
+                            time: timeTable[day].tasks[task._id] ?? 0
+                        })
+                    }
+                    break;
+                case 'month':
+                    for (let day = 0; day < 31; day++) {
+                        const start = new Date();
+                        start.setDate(start.getDate() - 30 + day);
+                        start.setHours(0, 0, 0, 0);
+                        data.push({
+                            day: `${day}`,
+                            time: timeTable[day].tasks[task._id] ?? 0
+                        })
+                    }
+                    break;
+                case 'year':
+                    for (let month = 0; month < 12; month++) {
+                        const start = new Date();
+                        start.setMonth(month, 1)
+                        start.setHours(0, 0, 0, 0);
+                        data.push({
+                            day: `${month}`,
+                            time: timeTable[month].tasks[task._id] ?? 0
+                        })
+                    }
+                    break;
+            }
+            ret.push({
+                name: task.name,
+                data
+            })
+        }
+        return ret;
+    }, [timeTable]);
+    useEffect(() => {
+        let isMounted = true;
+        getTimeTable(timeTableMode).then(timeTable => {
+            if (isMounted)
+                setTimeTable(timeTable ?? []);
+        });
+        return () => {
+            isMounted = false;
+        };
+    }, [timeTableMode]);
     if (user == null) {
         return <View style={styles.container}>
             <ActivityIndicator/>
         </View>;
     }
+
+    const chartColors = [
+        "#ffa600",
+        "#ff7c43",
+        "#f95d6a",
+        "#d45087",
+        "#a05195",
+        "#665191",
+        "#2f4b7c",
+        "#003f5c",
+    ];
 
     return (
         <SafeAreaView style={styles.container}>
@@ -219,13 +297,53 @@ export default function HomeScreen(props: Props) {
             <View>
                 <View style={{display: 'flex', flexDirection: "row", justifyContent: 'space-around'}}>
                     {[['day', 'Dziś'], ['week', 'Ten tydzień'], ['month', 'Ten miesiąc'], ['year', 'Ten rok']].map(el => (
-                        <Pressable onPress={() => setTimeTableMode(el[0])}>
-                            <Text style={{fontSize: 17, textDecorationLine: timeTableMode === el[0] ? 'none' : 'underline', color: timeTableMode !== el[0]? '#ccc': '#fff'}}>{el[1]}</Text>
+                        <Pressable onPress={() => setTimeTableMode(el[0])} key={el[0]}>
+                            <Text style={{
+                                fontSize: 17,
+                                textDecorationLine: timeTableMode === el[0] ? 'none' : 'underline',
+                                color: timeTableMode !== el[0] ? '#ccc' : '#fff'
+                            }}>{el[1]}</Text>
                         </Pressable>
                     ))}
                 </View>
                 <View>
-                    <Text style={{color: '#fff'}}>Statystyki z {timeTableMode}</Text>
+                    {chartData.length > 0 && <VictoryChart
+                        domainPadding={0}
+                        height={400}
+                        padding={{left: 70, top: 20, right: 20, bottom: 100}}
+                        theme={VictoryTheme.material}
+                    >
+                        <VictoryLegend x={120} y={335}
+                                       orientation="horizontal"
+                                       gutter={20}
+                                       style={{border: {stroke: "#fff"}, title: {fontSize: 20}}}
+                                       data={
+                                           chartData.map((cd, i) => ({name: cd.name, symbol: {fill: chartColors[i]}}))
+                                       }
+                        />
+                        <VictoryAxis
+                            tickValues={chartData[0].data.map((cd, i) => i)}
+                            tickFormat={chartData[0].data.map((cd, i) => cd.day)}
+                            fixLabelOverlap={true}
+                        />
+                        <VictoryAxis
+                            dependentAxis
+                            tickFormat={(x) => formatElapsedtime(x, true)}
+                            fixLabelOverlap={true}
+                        />
+                        <VictoryStack colorScale={chartColors}>
+                            {chartData.map(cd => {
+                                return (
+                                    cd.data.length > 0 && <VictoryArea
+                                        key={cd.name}
+                                        data={cd.data}
+                                        x="day"
+                                        y="time"
+                                    />
+                                );
+                            })}
+                        </VictoryStack>
+                    </VictoryChart>}
                 </View>
                 <StatusBar style="light"/>
             </View>
