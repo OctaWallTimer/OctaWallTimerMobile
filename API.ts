@@ -147,10 +147,10 @@ export const saveTaskTime = async (task?: string): Promise<TaskTime> => {
     })
 }
 
-export const getTimeTable = async (mode?: string): Promise<TimeTable[]> => {
+export const getTimeTable = async (mode?: string, offset?: number): Promise<TimeTable[]> => {
     const token = await getToken();
     return new Promise((resolve, reject) => {
-        axios.get(`${baseUrl}/timetable?mode=${mode}`, {
+        axios.get(`${baseUrl}/timetable?mode=${mode}&offset=${offset}`, {
             headers: {
                 Authorization: `Bearer ${token}`
             }

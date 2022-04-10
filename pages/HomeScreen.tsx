@@ -6,9 +6,7 @@ import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
     VictoryArea,
     VictoryAxis,
-    VictoryBar,
     VictoryChart,
-    VictoryGroup, VictoryLegend,
     VictoryStack,
     VictoryTheme
 } from "victory-native";
@@ -16,9 +14,9 @@ import {
 
 import {manager, SERVICE_UUID, CHARACTERISTIC_UUID} from '../BLE';
 import {Characteristic} from 'react-native-ble-plx';
-import {clearToken, getToken, getWallBindings, setToken} from '../Storage';
-import {ChartTimeTable, RootStackParamList, Task, TaskTime, TimeTable, User} from '../types';
-import {getTasks, getTaskTimes, getTimeTable, me, saveTaskTime} from '../API';
+import {clearToken, getToken, getWallBindings} from '../Storage';
+import {ChartTimeTable, RootStackParamList, Task, TimeTable, User} from '../types';
+import {getTasks, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 import {IconName} from "@fortawesome/fontawesome-common-types";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
@@ -71,8 +69,8 @@ export default function HomeScreen(props: Props) {
             isMounted = false;
         };
     }, []);
-    const logout = useCallback(() => {
-        clearToken();
+    const logout = useCallback(async () => {
+        await clearToken();
         props.navigation.navigate('Login');
     }, [])
     let [characteristic, setCharacteristic] = useState<Characteristic | null>(null);
@@ -88,7 +86,7 @@ export default function HomeScreen(props: Props) {
                     }
                     if (device.name === 'OctaWallTimer') {
                         manager.stopDeviceScan();
-                        device.onDisconnected((error, device) => {
+                        device.onDisconnected(() => {
                             setCharacteristic(null);
                         })
                         device.connect()
@@ -154,14 +152,26 @@ export default function HomeScreen(props: Props) {
     }, [wallChangeTime]);
 
     const formatElapsedtime = (num: number, short: boolean = false) => {
+        let elapsed = "";
         num /= 1000;
         if (num < 60) {
-            return Math.round(num) + "s";
+            elapsed = Math.round(num) + "s";
+        } else if (num < 60 * 60) {
+            elapsed = Math.round(num / 60) + "min " + Math.round(num) % 60 + "s";
+        } else if (num < 60 * 60 * 24) {
+            elapsed = Math.round(num / 60 / 60) + "h " +
+                Math.round(num / 60) + "min " +
+                Math.round(num) % 60 + "s";
+        } else {
+            elapsed = Math.round(num / 60 / 60 / 24) + "d " +
+                Math.round(num / 60 / 60) + "h " +
+                Math.round(num / 60) + "min " +
+                Math.round(num) % 60 + "s";
         }
         if (short) {
-            return Math.round(num / 60) + "min";
+            return elapsed.split(" ")[0];
         }
-        return Math.round(num / 60) + "min " + Math.round(num) % 60 + "s";
+        return elapsed;
     }
 
     const getTask = useCallback(taskID => {
@@ -175,6 +185,34 @@ export default function HomeScreen(props: Props) {
 
     const [timeTableMode, setTimeTableMode] = useState('day');
     const [timeTable, setTimeTable] = useState<TimeTable[]>([]);
+    const [timeTableOffset, setTimeTableOffset] = useState(0);
+    const timeTableOffsetTitle = useMemo(() => {
+        let now = (new Date()).getTime();
+        const day = 24 * 60 * 60 * 1000;
+        switch (timeTableMode) {
+            case 'day': {
+                const date = new Date(now - day * timeTableOffset);
+                return date.getDate() + "." + (date.getMonth() + 1) + "." + date.getFullYear();
+            }
+            case 'week': {
+                const end = new Date(now - 7 * day * timeTableOffset);
+                const start = new Date(now - 7 * day * (timeTableOffset + 1));
+                return start.getDate() + "." + (start.getMonth() + 1) + "." + start.getFullYear() + " - "
+                    + end.getDate() + "." + (end.getMonth() + 1) + "." + end.getFullYear();
+            }
+            case 'month': {
+                const end = new Date(now);
+                end.setMonth(end.getMonth() - timeTableOffset);
+                return (end.getMonth() + 1) + "/" + end.getFullYear();
+            }
+            case 'year': {
+                const end = new Date(now);
+                end.setFullYear(end.getFullYear() - timeTableOffset);
+                return end.getFullYear().toString();
+            }
+        }
+        return ""
+    }, [timeTableOffset, timeTableMode]);
     const chartData = useMemo(() => {
         let ret: { name: string, data: ChartTimeTable[] }[] = [];
         for (let taskId = 0; taskId < tasks.length; taskId++) {
@@ -231,14 +269,14 @@ export default function HomeScreen(props: Props) {
     }, [timeTable]);
     useEffect(() => {
         let isMounted = true;
-        getTimeTable(timeTableMode).then(timeTable => {
+        getTimeTable(timeTableMode, timeTableOffset).then(timeTable => {
             if (isMounted)
                 setTimeTable(timeTable ?? []);
         });
         return () => {
             isMounted = false;
         };
-    }, [timeTableMode]);
+    }, [timeTableMode, timeTableOffset]);
 
     const [selectedChartLabel, setSelectedChartLabel] = useState("");
 
@@ -294,7 +332,10 @@ export default function HomeScreen(props: Props) {
             <View>
                 <View style={{display: 'flex', flexDirection: "row", justifyContent: 'space-around'}}>
                     {[['day', 'Dziś'], ['week', 'Ten tydzień'], ['month', 'Ten miesiąc'], ['year', 'Ten rok']].map(el => (
-                        <Pressable onPress={() => setTimeTableMode(el[0])} key={el[0]}>
+                        <Pressable onPress={() => {
+                            setTimeTableMode(el[0]);
+                            setTimeTableOffset(0);
+                        }} key={el[0]}>
                             <Text style={{
                                 fontSize: 17,
                                 textDecorationLine: timeTableMode === el[0] ? 'none' : 'underline',
@@ -302,6 +343,20 @@ export default function HomeScreen(props: Props) {
                             }}>{el[1]}</Text>
                         </Pressable>
                     ))}
+                </View>
+                <View style={{display: 'flex', marginTop: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center'}}>
+                    <Pressable onPress={() => setTimeTableOffset(timeTableOffset + 1)}>
+                        <FontAwesomeIcon icon={['fas', 'arrow-left']} color={'#fff'}/>
+                    </Pressable>
+                    <Text style={{
+                        color: '#fff',
+                        fontSize: 20,
+                        marginLeft: 10,
+                        marginRight: 10
+                    }}>{timeTableOffsetTitle}</Text>
+                    <Pressable onPress={() => setTimeTableOffset(timeTableOffset - 1)}>
+                        <FontAwesomeIcon icon={['fas', 'arrow-right']} color={'#fff'}/>
+                    </Pressable>
                 </View>
                 <View>
                     {chartData.length > 0 &&
@@ -315,7 +370,7 @@ export default function HomeScreen(props: Props) {
                         >
                             <VictoryAxis
                                 tickValues={chartData[0].data.map((cd, i) => i)}
-                                tickFormat={chartData[0].data.map((cd, i) => cd.day)}
+                                tickFormat={chartData[0].data.map((cd) => cd.day)}
                                 fixLabelOverlap={true}
                             />
                             <VictoryAxis
@@ -329,7 +384,10 @@ export default function HomeScreen(props: Props) {
                                         (<VictoryArea
                                             style={{data: {fill: chartColors[i % chartColors.length]}}}
                                             key={cd.name}
-                                            data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{day: '', time: 0}]}
+                                            data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{
+                                                day: '',
+                                                time: 0
+                                            }]}
                                             x="day"
                                             y="time"
                                         />);
