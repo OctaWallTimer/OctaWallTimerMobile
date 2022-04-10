@@ -5,12 +5,51 @@ import {Button, Pressable, StyleSheet, Text, TextInput, View} from 'react-native
 import {getTasks, login, me, saveTask} from '../API';
 import {getToken, getWallBindings, setToken, setWallBindings} from '../Storage';
 import {RootStackParamList, Task, User} from '../types';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome'
+import {IconName} from "@fortawesome/fontawesome-common-types";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChangeWallBinding'>;
+
+const icons = [
+    "bath",
+    "beer-mug-empty",
+    "bomb",
+    "book-journal-whills",
+    "broom-ball",
+    "brush",
+    "business-time",
+    "camera-retro",
+    "code",
+    "dragon",
+    "dumpster-fire",
+    "fire",
+    "floppy-disk",
+    "font-awesome",
+    "ghost",
+    "golf-ball-tee",
+    "guitar",
+    "hand-spock",
+    "ice-cream",
+    "jedi",
+    "meteor",
+    "motorcycle",
+    "mug-saucer",
+    "poo",
+    "poo-storm",
+    "record-vinyl",
+    "socks",
+    "stroopwafel",
+    "umbrella-beach",
+    "user-astronaut",
+    "user-secret",
+    "virus",
+    "whiskey-glass",
+]
 
 export default function ChangeWallBindingScreen(props: Props) {
     const wall = props.navigation.state.params.wall;
     const [name, setName] = useState("");
+    const [selectedIcon, setSelectedIcon] = useState(icons[0]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -58,7 +97,7 @@ export default function ChangeWallBindingScreen(props: Props) {
     }, [wall]);
     const onSave = useCallback(() => {
         setLoading(true);
-        saveTask(name, "ff0000", "gear").then(task => {
+        saveTask(name, "ff0000", selectedIcon).then(task => {
             setTask(task._id);
         }).catch(error => {
             setLoading(false);
@@ -82,9 +121,18 @@ export default function ChangeWallBindingScreen(props: Props) {
                         paddingHorizontal: 20,
                         paddingVertical: 5,
                         marginVertical: 10,
-                        borderRadius: 8
+                        borderRadius: 8,
+                        display: 'flex',
+                        flexDirection: 'row'
                     }} key={task._id}>
-                        <Text style={{color: '#fff'}}>{task.name}</Text>
+                        <FontAwesomeIcon icon={['fas', task.icon as IconName]}
+                                         style={{color: '#fff', marginRight: 10}}/>
+                        <Text style={{color: '#fff', flexGrow: 1}}>{task.name}</Text>
+                        <Pressable onPress={() => {
+                            console.log("edit")
+                        }}>
+                            <FontAwesomeIcon icon={['fas', 'pen']} style={{color: '#fff', marginRight: 10}}/>
+                        </Pressable>
                     </Pressable>
                 ))}
             </View>
@@ -92,6 +140,13 @@ export default function ChangeWallBindingScreen(props: Props) {
             <View style={{marginBottom: 10}}>
                 <Text style={{color: '#fff'}}>Nowa nazwa</Text>
                 <TextInput style={styles.input} onChangeText={text => setName(text)} value={name} editable={!loading}/>
+            </View>
+            <View style={{display: 'flex', flexDirection: 'row', flexWrap: 'wrap'}}>
+                {icons.map((icon) => (
+                    <Pressable style={selectedIcon == icon ? {borderWidth: 1, borderColor: '#ffffff', borderRadius: 5, backgroundColor: '#ffffff80'} : {}} onPress={() => setSelectedIcon(icon)}>
+                        <FontAwesomeIcon icon={['fas', icon as IconName]} style={{color: '#fff', margin: 5}} size={25}/>
+                    </Pressable>
+                ))}
             </View>
             <Pressable onPress={onSave} style={{
                 backgroundColor: '#ff5010',

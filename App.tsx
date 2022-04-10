@@ -7,7 +7,10 @@ import LoginScreen from './pages/LoginScreen';
 import RegisterScreen from './pages/RegisterScreen';
 import ChangeWallBindingScreen from './pages/ChangeWallBindingScreen';
 
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { fas } from '@fortawesome/free-solid-svg-icons'
 
+library.add(fas)
 
 export default function App() {
 
