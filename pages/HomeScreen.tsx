@@ -243,16 +243,7 @@ export default function HomeScreen(props: Props) {
         </View>;
     }
 
-    const chartColors = [
-        "#ffa600",
-        "#ff7c43",
-        "#f95d6a",
-        "#d45087",
-        "#a05195",
-        "#665191",
-        "#2f4b7c",
-        "#003f5c",
-    ];
+    const chartColors = ["#ff0000","#ff8700","#ffd300","#deff0a","#a1ff0a","#0aff99","#0aefff","#147df5","#580aff","#be0aff"];
 
     return (
         <SafeAreaView style={styles.container}>
