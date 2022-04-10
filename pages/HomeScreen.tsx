@@ -20,6 +20,7 @@ import {getTasks, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 import {IconName} from "@fortawesome/fontawesome-common-types";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
+import { ScrollView } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -153,21 +154,24 @@ export default function HomeScreen(props: Props) {
 
     const formatElapsedtime = (num: number, short: boolean = false) => {
         let elapsed = "";
-        num /= 1000;
-        if (num < 60) {
-            elapsed = Math.round(num) + "s";
-        } else if (num < 60 * 60) {
-            elapsed = Math.round(num / 60) + "min " + Math.round(num) % 60 + "s";
-        } else if (num < 60 * 60 * 24) {
-            elapsed = Math.round(num / 60 / 60) + "h " +
-                Math.round(num / 60) + "min " +
-                Math.round(num) % 60 + "s";
-        } else {
-            elapsed = Math.round(num / 60 / 60 / 24) + "d " +
-                Math.round(num / 60 / 60) + "h " +
-                Math.round(num / 60) + "min " +
-                Math.round(num) % 60 + "s";
-        }
+        num = Math.floor(num / 1000);
+
+        let sec = num % 60;
+        num = Math.floor(num / 60);
+
+        let min = num % 60;
+        num = Math.floor(num / 60);
+
+        let hours = num % 24;
+        num = Math.floor(num / 24);
+
+        let days = num;
+
+        if (days > 0) elapsed += days + "d ";
+        if (hours > 0) elapsed += hours + "h ";
+        if (min > 0) elapsed += min + "min ";
+        if (sec > 0) elapsed += sec + "s ";
+
         if (short) {
             return elapsed.split(" ")[0];
         }
@@ -243,7 +247,7 @@ export default function HomeScreen(props: Props) {
                         start.setDate(start.getDate() - 30 + day);
                         start.setHours(0, 0, 0, 0);
                         data.push({
-                            day: `${day}`,
+                            day: `${start.getDate()}`,
                             time: timeTable[day].tasks[task._id] ?? 0
                         })
                     }
@@ -291,135 +295,157 @@ export default function HomeScreen(props: Props) {
     // @ts-ignore
     return (
         <SafeAreaView style={styles.container}>
-            <View style={{padding: 10, backgroundColor: '#444', display: 'flex', flexDirection: 'row'}}>
-                <Text style={{color: '#fff', flexGrow: 1}}>Zalogowano jako: {user.name}</Text>
-                <Pressable onPress={logout}><Text
-                    style={{textDecorationLine: 'underline', color: '#fff'}}>Wyloguj</Text></Pressable>
-            </View>
-            <View>
-                {wall !== -1 ? (
-                    <View style={{
-                        padding: 10,
-                        display: 'flex',
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                    }}>
-                        <View>
-                            <Text style={{color: '#fff', fontSize: 18}}>Aktualne zadanie: </Text>
-                            {bindings[wall] ? (
-                                <Text style={{
-                                    color: '#fff',
-                                    fontSize: 18
-                                }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime)})</Text>
-                            ) : (
-                                <Text style={{color: '#fff', fontSize: 18}}>Brak
-                                    ({formatElapsedtime(elapsedTime)})</Text>
-                            )}
-                        </View>
-                        <Pressable onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}>
-                            <Text style={{textDecorationLine: 'underline', color: '#fff'}}>
-                                Zmień zadanie
-                            </Text>
-                        </Pressable>
-                    </View>
-                ) : (
-                    <View style={{padding: 10, display: 'flex', flexDirection: 'row'}}>
-                        <Text style={{color: '#fff'}}>Brak połączenia z kostką</Text>
-                    </View>
-                )}
-            </View>
-            <View>
-                <View style={{display: 'flex', flexDirection: "row", justifyContent: 'space-around'}}>
-                    {[['day', 'Dziś'], ['week', 'Ten tydzień'], ['month', 'Ten miesiąc'], ['year', 'Ten rok']].map(el => (
-                        <Pressable onPress={() => {
-                            setTimeTableMode(el[0]);
-                            setTimeTableOffset(0);
-                        }} key={el[0]}>
-                            <Text style={{
-                                fontSize: 17,
-                                textDecorationLine: timeTableMode === el[0] ? 'none' : 'underline',
-                                color: timeTableMode !== el[0] ? '#ccc' : '#fff'
-                            }}>{el[1]}</Text>
-                        </Pressable>
-                    ))}
-                </View>
-                <View style={{display: 'flex', marginTop: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center'}}>
-                    <Pressable onPress={() => setTimeTableOffset(timeTableOffset + 1)}>
-                        <FontAwesomeIcon icon={['fas', 'arrow-left']} color={'#fff'}/>
-                    </Pressable>
-                    <Text style={{
-                        color: '#fff',
-                        fontSize: 20,
-                        marginLeft: 10,
-                        marginRight: 10
-                    }}>{timeTableOffsetTitle}</Text>
-                    <Pressable onPress={() => setTimeTableOffset(timeTableOffset - 1)}>
-                        <FontAwesomeIcon icon={['fas', 'arrow-right']} color={'#fff'}/>
-                    </Pressable>
+            <ScrollView>
+                <View style={{padding: 10, backgroundColor: '#444', display: 'flex', flexDirection: 'row'}}>
+                    <Text style={{color: '#fff', flexGrow: 1}}>Zalogowano jako: {user.name}</Text>
+                    <Pressable onPress={logout}><Text
+                        style={{textDecorationLine: 'underline', color: '#fff'}}>Wyloguj</Text></Pressable>
                 </View>
                 <View>
-                    {chartData.length > 0 &&
-                    <View>
-
-                        <VictoryChart
-                            domainPadding={0}
-                            height={330}
-                            padding={{left: 70, top: 20, right: 20, bottom: 40}}
-                            theme={VictoryTheme.material}
-                        >
-                            <VictoryAxis
-                                tickValues={chartData[0].data.map((cd, i) => i)}
-                                tickFormat={chartData[0].data.map((cd) => cd.day)}
-                                fixLabelOverlap={true}
-                            />
-                            <VictoryAxis
-                                dependentAxis
-                                tickFormat={(x) => formatElapsedtime(x, true)}
-                                fixLabelOverlap={true}
-                            />
-                            <VictoryStack>
-                                {chartData.map((cd, i) => {
-                                    return cd.data.length > 0 &&
-                                        (<VictoryArea
-                                            style={{data: {fill: chartColors[i % chartColors.length]}}}
-                                            key={cd.name}
-                                            data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{
-                                                day: '',
-                                                time: 0
-                                            }]}
-                                            x="day"
-                                            y="time"
-                                        />);
-                                })}
-                            </VictoryStack>
-                        </VictoryChart>
-                        <View style={{paddingLeft: 20, paddingRight: 20}}>
-                            {chartData.map((cd, i) => (
-                                <Pressable
-                                    key={i}
-                                    onPress={() => setSelectedChartLabel(selectedChartLabel == cd.name ? "" : cd.name)}>
+                    {wall !== -1 ? (
+                        <View style={{
+                            padding: 10,
+                            display: 'flex',
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <View>
+                                <Text style={{color: '#fff', fontSize: 18}}>Aktualne zadanie: </Text>
+                                {bindings[wall] ? (
                                     <Text style={{
-                                        color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444',
-                                        fontSize: 20
-                                    }}>
-                                        <Text style={{
-                                            color: selectedChartLabel == "" || selectedChartLabel == cd.name ? chartColors[i % chartColors.length] : '#444',
-                                            fontSize: 25
-                                        }}>●</Text>
-                                        {tasks.find(t => t.name == cd.name) !== undefined && <FontAwesomeIcon
-                                            icon={['fas', (tasks.find(t => t.name == cd.name) ?? {icon: ''}).icon as IconName]}
-                                            style={{color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444'}}/>}
-                                        {cd.name}
-                                    </Text>
-                                </Pressable>
-                            ))}
+                                        color: '#fff',
+                                        fontSize: 18
+                                    }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime)})</Text>
+                                ) : (
+                                    <Text style={{color: '#fff', fontSize: 18}}>Brak
+                                        ({formatElapsedtime(elapsedTime)})</Text>
+                                )}
+                            </View>
+                            <Pressable onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}>
+                                <Text style={{textDecorationLine: 'underline', color: '#fff'}}>
+                                    Zmień zadanie
+                                </Text>
+                            </Pressable>
                         </View>
-                    </View>
-                    }
+                    ) : (
+                        <View style={{padding: 10, display: 'flex', flexDirection: 'row'}}>
+                            <Text style={{color: '#fff'}}>Brak połączenia z kostką</Text>
+                        </View>
+                    )}
                 </View>
-                <StatusBar style="light"/>
-            </View>
+                <View>
+                    <View style={{display: 'flex', flexDirection: "row", justifyContent: 'space-around'}}>
+                        {[['day', 'Dziś'], ['week', 'Ten tydzień'], ['month', 'Ten miesiąc'], ['year', 'Ten rok']].map(el => (
+                            <Pressable onPress={() => {
+                                setTimeTableMode(el[0]);
+                                setTimeTableOffset(0);
+                            }} key={el[0]}>
+                                <Text style={{
+                                    fontSize: 17,
+                                    textDecorationLine: timeTableMode === el[0] ? 'none' : 'underline',
+                                    color: timeTableMode !== el[0] ? '#ccc' : '#fff'
+                                }}>{el[1]}</Text>
+                            </Pressable>
+                        ))}
+                    </View>
+                    <View style={{
+                        display: 'flex',
+                        marginTop: 20,
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <Pressable onPress={() => setTimeTableOffset(timeTableOffset + 1)}>
+                            <FontAwesomeIcon icon={['fas', 'arrow-left']} color={'#fff'}/>
+                        </Pressable>
+                        <Text style={{
+                            color: '#fff',
+                            fontSize: 20,
+                            marginLeft: 10,
+                            marginRight: 10
+                        }}>{timeTableOffsetTitle}</Text>
+                        <Pressable onPress={() => setTimeTableOffset(timeTableOffset - 1)}>
+                            <FontAwesomeIcon icon={['fas', 'arrow-right']} color={'#fff'}/>
+                        </Pressable>
+                    </View>
+                    <View>
+                        {chartData.length > 0 &&
+                        <View>
+
+                            <VictoryChart
+                                domainPadding={0}
+                                height={330}
+                                padding={{left: 70, top: 20, right: 20, bottom: 40}}
+                                theme={VictoryTheme.material}
+                            >
+                                <VictoryAxis
+                                    tickValues={chartData[0].data.map((cd, i) => i)}
+                                    tickFormat={chartData[0].data.map((cd) => cd.day)}
+                                    fixLabelOverlap={true}
+                                />
+                                <VictoryAxis
+                                    dependentAxis
+                                    tickFormat={(x) => formatElapsedtime(x, true)}
+                                    fixLabelOverlap={true}
+                                />
+                                <VictoryStack>
+                                    {chartData.map((cd, i) => {
+                                        return cd.data.length > 0 &&
+                                            (<VictoryArea
+                                                style={{data: {fill: chartColors[i % chartColors.length]}}}
+                                                key={cd.name}
+                                                data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{
+                                                    day: '',
+                                                    time: 0
+                                                }]}
+                                                x="day"
+                                                y="time"
+                                            />);
+                                    })}
+                                </VictoryStack>
+                            </VictoryChart>
+                            <View style={{paddingLeft: 20, paddingRight: 20}}>
+                                {chartData.map((cd, i) => (
+                                    <Pressable
+                                        key={i}
+                                        onPress={() => setSelectedChartLabel(selectedChartLabel == cd.name ? "" : cd.name)}>
+                                        <Text style={{
+                                            color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444',
+                                            fontSize: 20
+                                        }}>
+                                            <Text style={{
+                                                color: selectedChartLabel == "" || selectedChartLabel == cd.name ? chartColors[i % chartColors.length] : '#444',
+                                                fontSize: 25
+                                            }}>●</Text>
+                                            {tasks.find(t => t.name == cd.name) !== undefined && <FontAwesomeIcon
+                                                icon={['fas', (tasks.find(t => t.name == cd.name) ?? {icon: ''}).icon as IconName]}
+                                                style={{color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444'}}/>}
+                                            {cd.name}
+                                        </Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </View>
+                        }
+                    </View>
+                    <Text style={{color: '#fff', textAlign: 'center', fontSize: 25, marginTop: 20, marginBottom: 10}}>Podsumowanie:</Text>
+                    <View>
+                        {chartData.map((cd, i) => (
+                            <View key={i} style={{display: 'flex', flexDirection: 'row', borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#aaa'}}>
+                                <Text style={{color: '#fff', flexBasis: '50%', textAlign: 'right', marginRight: 10}}>{cd.name}</Text>
+                                <Text style={{
+                                    color: '#fff',
+                                    flexBasis: '50%',
+                                    paddingLeft: 10
+                                }}>{formatElapsedtime(cd.data.reduce((a, b) => a + b.time, 0))}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <StatusBar style="light"/>
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
