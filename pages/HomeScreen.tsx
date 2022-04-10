@@ -20,6 +20,8 @@ import {clearToken, getToken, getWallBindings, setToken} from '../Storage';
 import {ChartTimeTable, RootStackParamList, Task, TaskTime, TimeTable, User} from '../types';
 import {getTasks, getTaskTimes, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
+import {IconName} from "@fortawesome/fontawesome-common-types";
+import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -237,14 +239,18 @@ export default function HomeScreen(props: Props) {
             isMounted = false;
         };
     }, [timeTableMode]);
+
+    const [selectedChartLabel, setSelectedChartLabel] = useState("");
+
     if (user == null) {
         return <View style={styles.container}>
             <ActivityIndicator/>
         </View>;
     }
 
-    const chartColors = ["#ff0000","#ff8700","#ffd300","#deff0a","#a1ff0a","#0aff99","#0aefff","#147df5","#580aff","#be0aff"];
+    const chartColors = ["#ff0000", "#ff8700", "#ffd300", "#deff0a", "#a1ff0a", "#0aff99", "#0aefff", "#147df5", "#580aff", "#be0aff"];
 
+    // @ts-ignore
     return (
         <SafeAreaView style={styles.container}>
             <View style={{padding: 10, backgroundColor: '#444', display: 'flex', flexDirection: 'row'}}>
@@ -298,43 +304,61 @@ export default function HomeScreen(props: Props) {
                     ))}
                 </View>
                 <View>
-                    {chartData.length > 0 && <VictoryChart
-                        domainPadding={0}
-                        height={400}
-                        padding={{left: 70, top: 20, right: 20, bottom: 100}}
-                        theme={VictoryTheme.material}
-                    >
-                        <VictoryLegend x={120} y={335}
-                                       orientation="horizontal"
-                                       gutter={20}
-                                       style={{border: {stroke: "#fff"}, title: {fontSize: 20}}}
-                                       data={
-                                           chartData.map((cd, i) => ({name: cd.name, symbol: {fill: chartColors[i]}}))
-                                       }
-                        />
-                        <VictoryAxis
-                            tickValues={chartData[0].data.map((cd, i) => i)}
-                            tickFormat={chartData[0].data.map((cd, i) => cd.day)}
-                            fixLabelOverlap={true}
-                        />
-                        <VictoryAxis
-                            dependentAxis
-                            tickFormat={(x) => formatElapsedtime(x, true)}
-                            fixLabelOverlap={true}
-                        />
-                        <VictoryStack colorScale={chartColors}>
-                            {chartData.map(cd => {
-                                return (
-                                    cd.data.length > 0 && <VictoryArea
-                                        key={cd.name}
-                                        data={cd.data}
-                                        x="day"
-                                        y="time"
-                                    />
-                                );
-                            })}
-                        </VictoryStack>
-                    </VictoryChart>}
+                    {chartData.length > 0 &&
+                    <View>
+
+                        <VictoryChart
+                            domainPadding={0}
+                            height={330}
+                            padding={{left: 70, top: 20, right: 20, bottom: 40}}
+                            theme={VictoryTheme.material}
+                        >
+                            <VictoryAxis
+                                tickValues={chartData[0].data.map((cd, i) => i)}
+                                tickFormat={chartData[0].data.map((cd, i) => cd.day)}
+                                fixLabelOverlap={true}
+                            />
+                            <VictoryAxis
+                                dependentAxis
+                                tickFormat={(x) => formatElapsedtime(x, true)}
+                                fixLabelOverlap={true}
+                            />
+                            <VictoryStack>
+                                {chartData.map((cd, i) => {
+                                    return cd.data.length > 0 &&
+                                        (<VictoryArea
+                                            style={{data: {fill: chartColors[i % chartColors.length]}}}
+                                            key={cd.name}
+                                            data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{day: '', time: 0}]}
+                                            x="day"
+                                            y="time"
+                                        />);
+                                })}
+                            </VictoryStack>
+                        </VictoryChart>
+                        <View style={{paddingLeft: 20, paddingRight: 20}}>
+                            {chartData.map((cd, i) => (
+                                <Pressable
+                                    key={i}
+                                    onPress={() => setSelectedChartLabel(selectedChartLabel == cd.name ? "" : cd.name)}>
+                                    <Text style={{
+                                        color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444',
+                                        fontSize: 20
+                                    }}>
+                                        <Text style={{
+                                            color: selectedChartLabel == "" || selectedChartLabel == cd.name ? chartColors[i % chartColors.length] : '#444',
+                                            fontSize: 25
+                                        }}>●</Text>
+                                        {tasks.find(t => t.name == cd.name) !== undefined && <FontAwesomeIcon
+                                            icon={['fas', (tasks.find(t => t.name == cd.name) ?? {icon: ''}).icon as IconName]}
+                                            style={{color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444'}}/>}
+                                        {cd.name}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+                    }
                 </View>
                 <StatusBar style="light"/>
             </View>
