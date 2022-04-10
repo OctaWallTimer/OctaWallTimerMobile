@@ -68,7 +68,7 @@ export default function HomeScreen(props: Props) {
         return () => {
             isMounted = false;
         };
-    });
+    }, []);
     const logout = useCallback(() => {
         clearToken();
         props.navigation.navigate('Login');
