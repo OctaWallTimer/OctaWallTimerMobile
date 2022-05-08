@@ -20,14 +20,18 @@ import {getTasks, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 import {IconName} from "@fortawesome/fontawesome-common-types";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
-import { ScrollView } from 'react-native';
+import {ScrollView} from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+type DisplayModeType = "CHART" | "TABLE";
+const pad: (a: number) => string = d => d.toString().padStart(2, '0');
 
 export default function HomeScreen(props: Props) {
     const [user, setUser] = useState<User | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [bindings, setBindings] = useState<{ [id: number]: string }>({});
+    const [displayMode, setDisplayMode] = useState<DisplayModeType>("CHART");
     useEffect(() => {
         let isMounted = true;
         getToken().then(token => {
@@ -171,6 +175,7 @@ export default function HomeScreen(props: Props) {
         if (hours > 0) elapsed += hours + "h ";
         if (min > 0) elapsed += min + "min ";
         if (sec > 0) elapsed += sec + "s ";
+        if (elapsed.length == 0) elapsed = "0s";
 
         if (short) {
             return elapsed.split(" ")[0];
@@ -196,18 +201,18 @@ export default function HomeScreen(props: Props) {
         switch (timeTableMode) {
             case 'day': {
                 const date = new Date(now - day * timeTableOffset);
-                return date.getDate() + "." + (date.getMonth() + 1) + "." + date.getFullYear();
+                return pad(date.getDate()) + "." + pad(date.getMonth() + 1) + "." + date.getFullYear();
             }
             case 'week': {
                 const end = new Date(now - 7 * day * timeTableOffset);
                 const start = new Date(now - 7 * day * (timeTableOffset + 1));
-                return start.getDate() + "." + (start.getMonth() + 1) + "." + start.getFullYear() + " - "
-                    + end.getDate() + "." + (end.getMonth() + 1) + "." + end.getFullYear();
+                return pad(start.getDate()) + "." + pad(start.getMonth() + 1) + "." + start.getFullYear() + " - "
+                    + pad(end.getDate()) + "." + pad(end.getMonth() + 1) + "." + end.getFullYear();
             }
             case 'month': {
                 const end = new Date(now);
                 end.setMonth(end.getMonth() - timeTableOffset);
-                return (end.getMonth() + 1) + "/" + end.getFullYear();
+                return pad(end.getMonth() + 1) + "/" + end.getFullYear();
             }
             case 'year': {
                 const end = new Date(now);
@@ -242,13 +247,12 @@ export default function HomeScreen(props: Props) {
                     }
                     break;
                 case 'month':
-                    for (let day = 0; day < 31; day++) {
-                        const start = new Date();
-                        start.setDate(start.getDate() - 30 + day);
-                        start.setHours(0, 0, 0, 0);
+                    for (let week = 0; week < timeTable.length; week++) {
+                        const start = new Date(timeTable[week].start);
+                        const end = new Date(timeTable[week].end);
                         data.push({
-                            day: `${start.getDate()}`,
-                            time: timeTable[day].tasks[task._id] ?? 0
+                            day: `${pad(start.getDate())}.${pad(start.getMonth())}`,
+                            time: timeTable[week].tasks[task._id] ?? 0
                         })
                     }
                     break;
@@ -335,6 +339,29 @@ export default function HomeScreen(props: Props) {
                     )}
                 </View>
                 <View>
+                    <View style={{backgroundColor: "#333", display: "flex", flexDirection: "row", marginBottom: 10}}>
+                        <Pressable onPress={() => {
+                            setDisplayMode("CHART")
+                        }} style={{
+                            flex: 1,
+                            backgroundColor: displayMode == "CHART" ? "#555" : "transparent",
+                            alignItems: "center",
+                            padding: 10
+                        }}>
+                            <Text style={{fontSize: 17, color: "#fff"}}>Wykres</Text>
+                        </Pressable>
+                        <Pressable onPress={() => {
+                            setDisplayMode("TABLE")
+                        }} style={{
+                            flex: 1,
+                            backgroundColor: displayMode == "TABLE" ? "#555" : "transparent",
+                            alignItems: "center",
+                            padding: 10
+                        }}>
+                            <Text style={{fontSize: 17, color: "#fff"}}>Tabela</Text>
+                        </Pressable>
+
+                    </View>
                     <View style={{display: 'flex', flexDirection: "row", justifyContent: 'space-around'}}>
                         {[['day', 'Dziś'], ['week', 'Ten tydzień'], ['month', 'Ten miesiąc'], ['year', 'Ten rok']].map(el => (
                             <Pressable onPress={() => {
@@ -369,79 +396,108 @@ export default function HomeScreen(props: Props) {
                             <FontAwesomeIcon icon={['fas', 'arrow-right']} color={'#fff'}/>
                         </Pressable>
                     </View>
-                    <View>
+                    {displayMode == "CHART" && <View>
                         {chartData.length > 0 &&
-                        <View>
+                            <View>
 
-                            <VictoryChart
-                                domainPadding={0}
-                                height={330}
-                                padding={{left: 70, top: 20, right: 20, bottom: 40}}
-                                theme={VictoryTheme.material}
-                            >
-                                <VictoryAxis
-                                    tickValues={chartData[0].data.map((cd, i) => i)}
-                                    tickFormat={chartData[0].data.map((cd) => cd.day)}
-                                    fixLabelOverlap={true}
-                                />
-                                <VictoryAxis
-                                    dependentAxis
-                                    tickFormat={(x) => formatElapsedtime(x, true)}
-                                    fixLabelOverlap={true}
-                                />
-                                <VictoryStack>
-                                    {chartData.map((cd, i) => {
-                                        return cd.data.length > 0 &&
-                                            (<VictoryArea
-                                                style={{data: {fill: chartColors[i % chartColors.length]}}}
-                                                key={cd.name}
-                                                data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{
-                                                    day: '',
-                                                    time: 0
-                                                }]}
-                                                x="day"
-                                                y="time"
-                                            />);
-                                    })}
-                                </VictoryStack>
-                            </VictoryChart>
-                            <View style={{paddingLeft: 20, paddingRight: 20}}>
-                                {chartData.map((cd, i) => (
-                                    <Pressable
-                                        key={i}
-                                        onPress={() => setSelectedChartLabel(selectedChartLabel == cd.name ? "" : cd.name)}>
-                                        <Text style={{
-                                            color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444',
-                                            fontSize: 20
-                                        }}>
+                                <VictoryChart
+                                    domainPadding={0}
+                                    height={330}
+                                    padding={{left: 70, top: 20, right: 20, bottom: 40}}
+                                    theme={VictoryTheme.material}
+                                >
+                                    <VictoryAxis
+                                        tickValues={chartData[0].data.map((cd, i) => i)}
+                                        tickFormat={chartData[0].data.map((cd) => cd.day)}
+                                        fixLabelOverlap={true}
+                                    />
+                                    <VictoryAxis
+                                        dependentAxis
+                                        tickFormat={(x) => formatElapsedtime(x, true)}
+                                        fixLabelOverlap={true}
+                                    />
+                                    <VictoryStack>
+                                        {chartData.map((cd, i) => {
+                                            return cd.data.length > 0 &&
+                                                (<VictoryArea
+                                                    style={{data: {fill: chartColors[i % chartColors.length]}}}
+                                                    key={cd.name}
+                                                    data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{
+                                                        day: '',
+                                                        time: 0
+                                                    }]}
+                                                    x="day"
+                                                    y="time"
+                                                />);
+                                        })}
+                                    </VictoryStack>
+                                </VictoryChart>
+                                <View style={{paddingLeft: 20, paddingRight: 20}}>
+                                    {chartData.map((cd, i) => (
+                                        <Pressable
+                                            key={i}
+                                            onPress={() => setSelectedChartLabel(selectedChartLabel == cd.name ? "" : cd.name)}>
                                             <Text style={{
-                                                color: selectedChartLabel == "" || selectedChartLabel == cd.name ? chartColors[i % chartColors.length] : '#444',
-                                                fontSize: 25
-                                            }}>●</Text>
-                                            {tasks.find(t => t.name == cd.name) !== undefined && <FontAwesomeIcon
-                                                icon={['fas', (tasks.find(t => t.name == cd.name) ?? {icon: ''}).icon as IconName]}
-                                                style={{color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444'}}/>}
+                                                color: selectedChartLabel == "" || selectedChartLabel == cd.name ? '#fff' : '#444',
+                                                fontSize: 20
+                                            }}>
+                                                {tasks.find(t => t.name == cd.name) !== undefined && <FontAwesomeIcon
+                                                    icon={['fas', (tasks.find(t => t.name == cd.name) ?? {icon: ''}).icon as IconName]}
+                                                    style={{
+                                                        color: selectedChartLabel == "" || selectedChartLabel == cd.name ? chartColors[i % chartColors.length] : '#444'
+                                                    }}/>}
+                                                {cd.name}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
+                        }
+                    </View>}
+                    {displayMode == "TABLE" && <>
+                        <Text style={{
+                            color: '#fff',
+                            textAlign: 'center',
+                            fontSize: 25,
+                            marginTop: 20,
+                            marginBottom: 10
+                        }}>Podsumowanie:</Text>
+                        <View>
+                            {chartData.map((cd, i) => (
+                                <View key={i} style={{
+                                    display: 'flex',
+                                    flexDirection: 'row',
+                                    borderTopWidth: i > 0 ? 1 : 0,
+                                    borderTopColor: '#aaa',
+                                    paddingTop: 10,
+                                    paddingBottom: 10,
+                                }}>
+                                    <View style={{
+                                        flexBasis: '50%',
+                                        marginRight: 10,
+                                        display: "flex",
+                                        flexDirection: "row",
+                                        justifyContent: "flex-end"
+                                    }}>
+                                        <FontAwesomeIcon
+                                            icon={['fas', (tasks.find(t => t.name == cd.name) ?? {icon: ''}).icon as IconName]}
+                                            style={{
+                                                marginRight: 5,
+                                                color: selectedChartLabel == "" || selectedChartLabel == cd.name ? chartColors[i % chartColors.length] : '#444'
+                                            }}/>
+                                        <Text style={{color: '#fff'}}>
                                             {cd.name}
                                         </Text>
-                                    </Pressable>
-                                ))}
-                            </View>
+                                    </View>
+                                    <Text style={{
+                                        color: '#fff',
+                                        flexBasis: '50%',
+                                        paddingLeft: 10
+                                    }}>{formatElapsedtime(cd.data.reduce((a, b) => a + b.time, 0))}</Text>
+                                </View>
+                            ))}
                         </View>
-                        }
-                    </View>
-                    <Text style={{color: '#fff', textAlign: 'center', fontSize: 25, marginTop: 20, marginBottom: 10}}>Podsumowanie:</Text>
-                    <View>
-                        {chartData.map((cd, i) => (
-                            <View key={i} style={{display: 'flex', flexDirection: 'row', borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#aaa'}}>
-                                <Text style={{color: '#fff', flexBasis: '50%', textAlign: 'right', marginRight: 10}}>{cd.name}</Text>
-                                <Text style={{
-                                    color: '#fff',
-                                    flexBasis: '50%',
-                                    paddingLeft: 10
-                                }}>{formatElapsedtime(cd.data.reduce((a, b) => a + b.time, 0))}</Text>
-                            </View>
-                        ))}
-                    </View>
+                    </>}
 
                     <StatusBar style="light"/>
                 </View>
