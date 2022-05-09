@@ -192,7 +192,7 @@ export default function HomeScreen(props: Props) {
         return null;
     }, [tasks]);
 
-    const [timeTableMode, setTimeTableMode] = useState('day');
+    const [timeTableMode, setTimeTableMode] = useState<'day'|'week'|'month'|'year'>('day');
     const [timeTable, setTimeTable] = useState<TimeTable[]>([]);
     const [timeTableOffset, setTimeTableOffset] = useState(0);
     const timeTableOffsetTitle = useMemo(() => {
@@ -274,7 +274,7 @@ export default function HomeScreen(props: Props) {
             })
         }
         return ret;
-    }, [timeTable]);
+    }, [tasks, timeTable]);
     useEffect(() => {
         let isMounted = true;
         getTimeTable(timeTableMode, timeTableOffset).then(timeTable => {
@@ -284,7 +284,7 @@ export default function HomeScreen(props: Props) {
         return () => {
             isMounted = false;
         };
-    }, [timeTableMode, timeTableOffset]);
+    }, [setTimeTable, timeTableMode, timeTableOffset]);
 
     const [selectedChartLabel, setSelectedChartLabel] = useState("");
 
