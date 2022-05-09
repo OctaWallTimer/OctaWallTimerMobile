@@ -1,18 +1,12 @@
 import {StatusBar} from 'expo-status-bar';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import base64 from 'react-native-base64'
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {
-    VictoryArea,
-    VictoryAxis,
-    VictoryChart,
-    VictoryStack,
-    VictoryTheme
-} from "victory-native";
+import {VictoryAxis, VictoryBar, VictoryChart, VictoryStack, VictoryTheme} from "victory-native";
 
 
-import {manager, SERVICE_UUID, CHARACTERISTIC_UUID} from '../BLE';
+import {CHARACTERISTIC_UUID, manager, SERVICE_UUID} from '../BLE';
 import {Characteristic} from 'react-native-ble-plx';
 import {clearToken, getToken, getWallBindings} from '../Storage';
 import {ChartTimeTable, RootStackParamList, Task, TimeTable, User} from '../types';
@@ -20,7 +14,6 @@ import {getTasks, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 import {IconName} from "@fortawesome/fontawesome-common-types";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
-import {ScrollView} from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -192,7 +185,7 @@ export default function HomeScreen(props: Props) {
         return null;
     }, [tasks]);
 
-    const [timeTableMode, setTimeTableMode] = useState<'day'|'week'|'month'|'year'>('day');
+    const [timeTableMode, setTimeTableMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
     const [timeTable, setTimeTable] = useState<TimeTable[]>([]);
     const [timeTableOffset, setTimeTableOffset] = useState(0);
     const timeTableOffsetTitle = useMemo(() => {
@@ -295,6 +288,16 @@ export default function HomeScreen(props: Props) {
     }
 
     const chartColors = ["#ff0000", "#ff8700", "#ffd300", "#deff0a", "#a1ff0a", "#0aff99", "#0aefff", "#147df5", "#580aff", "#be0aff"];
+
+    const chartWidth = Dimensions.get('window').width;
+    const chartLeftPadding = 60;
+    const chartRightPadding = 20;
+    const chartTheme = VictoryTheme.material;
+    if (!chartTheme.axis) chartTheme.axis = {};
+    if (!chartTheme.axis.style) chartTheme.axis.style = {};
+    if (!chartTheme.axis.style.tickLabels) chartTheme.axis.style.tickLabels = {};
+    if (!chartTheme.axis.style.axis) chartTheme.axis.style.axis = {};
+    chartTheme.axis.style.tickLabels.fill = '#fff';
 
     // @ts-ignore
     return (
@@ -403,12 +406,14 @@ export default function HomeScreen(props: Props) {
                                 <VictoryChart
                                     domainPadding={0}
                                     height={330}
-                                    padding={{left: 70, top: 20, right: 20, bottom: 40}}
-                                    theme={VictoryTheme.material}
+                                    width={chartWidth}
+                                    padding={{left: chartLeftPadding, top: 20, right: chartRightPadding, bottom: 40}}
+                                    theme={chartTheme}
                                 >
                                     <VictoryAxis
                                         tickValues={chartData[0].data.map((cd, i) => i)}
                                         tickFormat={chartData[0].data.map((cd) => cd.day)}
+                                        offsetY={39}
                                         fixLabelOverlap={true}
                                     />
                                     <VictoryAxis
@@ -419,8 +424,15 @@ export default function HomeScreen(props: Props) {
                                     <VictoryStack>
                                         {chartData.map((cd, i) => {
                                             return cd.data.length > 0 &&
-                                                (<VictoryArea
-                                                    style={{data: {fill: chartColors[i % chartColors.length]}}}
+                                                (<VictoryBar
+                                                    barWidth={(chartWidth - chartLeftPadding - chartRightPadding) / cd.data.length}
+                                                    style={{
+                                                        data: {
+                                                            fill: chartColors[i % chartColors.length],
+                                                            stroke: '#000',
+                                                            strokeWidth: 2
+                                                        }
+                                                    }}
                                                     key={cd.name}
                                                     data={selectedChartLabel === "" || selectedChartLabel === cd.name ? cd.data : [{
                                                         day: '',
