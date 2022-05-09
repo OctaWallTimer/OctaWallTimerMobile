@@ -320,7 +320,7 @@ export default function HomeScreen(props: Props) {
                                     <Text style={{
                                         color: '#fff',
                                         fontSize: 18
-                                    }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime)})</Text>
+                                    }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime).trimEnd()})</Text>
                                 ) : (
                                     <Text style={{color: '#fff', fontSize: 18}}>Brak
                                         ({formatElapsedtime(elapsedTime)})</Text>

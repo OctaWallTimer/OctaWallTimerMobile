@@ -109,6 +109,25 @@ export const saveTask = async (name: string, color: string, icon: string): Promi
     })
 }
 
+export const updateTask = async (taskID: string, name: string, color: string, icon: string): Promise<Task> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.post(`${baseUrl}/tasks/${taskID}`, {name, color, icon}, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if (response.data.success) {
+                resolve(response.data.task as Task);
+            } else {
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
+        });
+    })
+}
+
 export const getTaskTimes = async (): Promise<TaskTime[]> => {
     const token = await getToken();
     return new Promise((resolve, reject) => {

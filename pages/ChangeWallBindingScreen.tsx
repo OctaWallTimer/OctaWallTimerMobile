@@ -1,8 +1,8 @@
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {StatusBar} from 'expo-status-bar';
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Button, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import {getTasks, login, me, saveTask} from '../API';
+import {getTasks, login, me, saveTask, updateTask} from '../API';
 import {getToken, getWallBindings, setToken, setWallBindings} from '../Storage';
 import {RootStackParamList, Task, User} from '../types';
 import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome'
@@ -95,29 +95,55 @@ export default function ChangeWallBindingScreen(props: Props) {
             props.navigation.goBack()
         })
     }, [wall]);
+    const [editId, setEditId] = useState("");
     const onSave = useCallback(() => {
         setLoading(true);
-        saveTask(name, "ff0000", selectedIcon).then(task => {
+        const apiCall = editId.length > 0 ? updateTask(editId, name, "ff0000", selectedIcon) : saveTask(name, "ff0000", selectedIcon)
+        apiCall.then(task => {
             setTask(task._id);
         }).catch(error => {
             setLoading(false);
             setError(error);
         });
-    }, [name]);
+    }, [name, selectedIcon, editId]);
+
+    const [currentTask, setCurrentTask] = useState("");
+    useEffect(() => {
+        getWallBindings().then(bindings => setCurrentTask(((bindings ?? {})[wall]) ?? ""))
+    }, [tasks])
+
+    const [newForm, setNewForm] = useState(false);
+    const editTask = useMemo(() => {
+        return tasks.find(t => t._id == editId);
+    }, [tasks, editId]);
+
+    useEffect(() => {
+        if (editTask) {
+            setName(editTask.name);
+            setSelectedIcon(editTask.icon)
+        }
+    }, [editTask]);
+
     const exit = useCallback(() => {
-        props.navigation.goBack()
-    }, [name]);
+        if (editId.length > 0) {
+            setEditId("");
+        } else if (newForm) {
+            setNewForm(false);
+        } else {
+            props.navigation.goBack()
+        }
+    }, [name, editId, newForm]);
     return (
         <View style={styles.container}>
-            <Text style={{fontSize: 25, marginBottom: 10, color: '#fff'}}>Numer aktualnej ścianki: {wall}</Text>
-            <Text style={{fontSize: 20, marginBottom: 10, color: '#fff'}}>Wybierz zadanie lub przypisz nowe</Text>
-            <View style={{width: '100%'}}>
-                <Text style={{fontSize: 20, marginBottom: 10, color: '#fff'}}>Aktualne zadania:</Text>
+            {(editId.length == 0 && !newForm) && <View style={{width: '100%'}}>
+                <Text style={{fontSize: 25, marginBottom: 10, color: '#fff'}}>Numer aktualnej ścianki: {wall}</Text>
+                <Text style={{fontSize: 20, marginBottom: 20, color: '#fff'}}>Wybierz zadanie lub utwórz nowe</Text>
+
                 {tasks.length == 0 ? (
                     <Text style={{color: '#fff'}}>Brak zadań</Text>
                 ) : tasks.map(task => (
                     <Pressable onPress={() => setTask(task._id)} style={{
-                        backgroundColor: '#444',
+                        backgroundColor: task._id == currentTask ? '#444' : '#222',
                         paddingHorizontal: 20,
                         paddingVertical: 5,
                         marginVertical: 10,
@@ -129,43 +155,86 @@ export default function ChangeWallBindingScreen(props: Props) {
                                          style={{color: '#fff', marginRight: 10}}/>
                         <Text style={{color: '#fff', flexGrow: 1}}>{task.name}</Text>
                         <Pressable onPress={() => {
-                            console.log("edit")
+                            setEditId(task._id);
                         }}>
-                            <FontAwesomeIcon icon={['fas', 'pen']} style={{color: '#fff', marginRight: 10}}/>
+                            <FontAwesomeIcon icon={['fas', 'pen']} style={{color: '#fff', padding: 10}}/>
                         </Pressable>
                     </Pressable>
                 ))}
-            </View>
-            <Text style={{color: '#ff3020', marginBottom: 10}}>{error}</Text>
-            <View style={{marginBottom: 10}}>
-                <Text style={{color: '#fff'}}>Nowa nazwa</Text>
-                <TextInput style={styles.input} onChangeText={text => setName(text)} value={name} editable={!loading}/>
-            </View>
-            <View style={{display: 'flex', flexDirection: 'row', flexWrap: 'wrap'}}>
-                {icons.map((icon) => (
-                    <Pressable style={selectedIcon == icon ? {borderWidth: 1, borderColor: '#ffffff', borderRadius: 5, backgroundColor: '#ffffff80'} : {}} onPress={() => setSelectedIcon(icon)}>
-                        <FontAwesomeIcon icon={['fas', icon as IconName]} style={{color: '#fff', margin: 5}} size={25}/>
-                    </Pressable>
-                ))}
-            </View>
-            <Pressable onPress={onSave} style={{
-                backgroundColor: '#ff5010',
-                paddingHorizontal: 20,
-                paddingVertical: 5,
-                marginVertical: 10,
-                borderRadius: 8
+            </View>}
+
+            {(newForm || editId.length > 0) ? <View style={{
+                width: '100%',
+                flex: 1,
+                backgroundColor: '#222',
+                alignItems: 'center',
+                justifyContent: 'center'
             }}>
-                <Text style={{color: '#fff'}}>Zapisz</Text>
-            </Pressable>
-            <Pressable onPress={exit} style={{
-                backgroundColor: '#666',
-                paddingHorizontal: 20,
-                paddingVertical: 5,
-                marginVertical: 10,
-                borderRadius: 8
-            }}>
-                <Text style={{color: '#fff'}}>Anuluj</Text>
-            </Pressable>
+                {newForm && <Text style={{fontSize: 20, marginBottom: 10, color: '#fff'}}>Dodaj nowe zadanie:</Text>}
+                {editTask && <Text style={{fontSize: 20, marginBottom: 10, color: '#fff'}}>Edycja
+                    zadania: {editTask.name}</Text>}
+                <Text style={{color: '#ff3020', marginBottom: 10}}>{error}</Text>
+                <View style={{marginBottom: 10}}>
+                    <Text style={{color: '#fff', fontSize: 18}}>Nazwa:</Text>
+                    <TextInput style={styles.input} onChangeText={text => setName(text)} value={name}
+                               editable={!loading}/>
+                </View>
+                <View style={{marginBottom: 10}}>
+                    <Text style={{color: '#fff', fontSize: 18}}>Ikona:</Text>
+                    <View style={{display: 'flex', flexDirection: 'row', flexWrap: 'wrap', width: 290}}>
+                        {icons.map((icon) => (
+                            <Pressable style={selectedIcon == icon ? {
+                                borderWidth: 1,
+                                borderColor: '#ffffff',
+                                borderRadius: 5,
+                                backgroundColor: '#ffffff80'
+                            } : {}} onPress={() => setSelectedIcon(icon)}>
+                                <FontAwesomeIcon icon={['fas', icon as IconName]} style={{color: '#fff', margin: 5}}
+                                                 size={25}/>
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+                <Pressable onPress={onSave} style={{
+                    backgroundColor: '#ff5010',
+                    paddingHorizontal: 20,
+                    paddingVertical: 5,
+                    marginVertical: 10,
+                    borderRadius: 8,
+                    width: 150
+                }}>
+                    <Text style={{color: '#fff', textAlign: 'center'}}>Zapisz</Text>
+                </Pressable>
+                <Pressable onPress={exit} style={{
+                    backgroundColor: '#666',
+                    paddingHorizontal: 20,
+                    paddingVertical: 5,
+                    marginVertical: 10,
+                    borderRadius: 8,
+                    width: 150
+                }}>
+                    <Text style={{color: '#fff', textAlign: 'center'}}>Anuluj</Text>
+                </Pressable>
+            </View> : <View>
+                <Pressable onPress={() => setNewForm(true)} style={{
+                    backgroundColor: '#ff5010',
+                    paddingHorizontal: 20,
+                    paddingVertical: 5,
+                    marginVertical: 10,
+                    borderRadius: 8,
+                    width: 150
+                }}><Text style={{color: '#fff', textAlign: "center"}}>Nowe zadanie</Text></Pressable>
+                <Pressable onPress={exit} style={{
+                    backgroundColor: '#666',
+                    paddingHorizontal: 20,
+                    paddingVertical: 5,
+                    marginVertical: 10,
+                    borderRadius: 8,
+                    width: 150
+                }}>
+                    <Text style={{color: '#fff', textAlign: "center"}}>Anuluj</Text>
+                </Pressable>
+            </View>}
             <StatusBar style="light"/>
         </View>
     );
@@ -174,6 +243,7 @@ export default function ChangeWallBindingScreen(props: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        padding: 25,
         backgroundColor: '#222',
         alignItems: 'center',
         justifyContent: 'center',
@@ -186,6 +256,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 10,
         height: 40,
-        width: 200,
+        width: 290,
     }
 });
