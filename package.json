@@ -24,6 +24,7 @@
     "react-native": "0.64.3",
     "react-native-base64": "^0.2.1",
     "react-native-ble-plx": "^2.0.3",
+    "react-native-floating-action": "^1.22.0",
     "react-native-gesture-handler": "^2.3.2",
     "react-native-svg": "12.1.1",
     "react-native-web": "0.17.1",
