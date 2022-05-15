@@ -14,6 +14,7 @@ import {getTasks, getTimeTable, me, saveTaskTime} from '../API';
 import {SafeAreaView} from 'react-navigation';
 import {IconName} from "@fortawesome/fontawesome-common-types";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
+import {FloatingAction} from "react-native-floating-action";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -309,37 +310,32 @@ export default function HomeScreen(props: Props) {
                         style={{textDecorationLine: 'underline', color: '#fff'}}>Wyloguj</Text></Pressable>
                 </View>
                 <View>
-                    {wall !== -1 ? (
-                        <View style={{
-                            padding: 10,
-                            display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}>
-                            <View>
-                                <Text style={{color: '#fff', fontSize: 18}}>Aktualne zadanie: </Text>
-                                {bindings[wall] ? (
-                                    <Text style={{
-                                        color: '#fff',
-                                        fontSize: 18
-                                    }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime).trimEnd()})</Text>
-                                ) : (
-                                    <Text style={{color: '#fff', fontSize: 18}}>Brak
-                                        ({formatElapsedtime(elapsedTime)})</Text>
-                                )}
-                            </View>
+                    <View style={{
+                        padding: 10,
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <View>
+                            <Text style={{color: '#fff', fontSize: 18}}>Aktualne zadanie: </Text>
+                            {bindings[wall] ? (
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18
+                                }}>{getTask(bindings[wall])?.name} ({formatElapsedtime(elapsedTime).trimEnd()})</Text>
+                            ) : (
+                                <Text style={{color: '#fff', fontSize: 18}}>Brak</Text>
+                            )}
+                        </View>
+                        {characteristic !== null &&
                             <Pressable onPress={() => props.navigation.navigate('ChangeWallBinding', {wall})}>
                                 <Text style={{textDecorationLine: 'underline', color: '#fff'}}>
                                     Zmień zadanie
                                 </Text>
                             </Pressable>
-                        </View>
-                    ) : (
-                        <View style={{padding: 10, display: 'flex', flexDirection: 'row'}}>
-                            <Text style={{color: '#fff'}}>Brak połączenia z kostką</Text>
-                        </View>
-                    )}
+                        }
+                    </View>
                 </View>
                 <View>
                     <View style={{backgroundColor: "#333", display: "flex", flexDirection: "row", marginBottom: 10}}>
@@ -514,6 +510,29 @@ export default function HomeScreen(props: Props) {
                     <StatusBar style="light"/>
                 </View>
             </ScrollView>
+            {characteristic === null && <FloatingAction
+                actions={Object.keys(bindings)
+                    .filter((wall: number) => bindings[wall] && getTask(bindings[wall]) != null)
+                    .map((wall: number) => {
+                        let task = getTask(bindings[wall]);
+
+                        return {
+                            text: task?.name,
+                            color: '#fff',
+                            icon: <FontAwesomeIcon icon={['fas', task?.icon]}/>,
+                            name: wall
+                        };
+                    })}
+                onPressItem={wall => setWall(wall)}
+                floatingIcon={<FontAwesomeIcon icon={['fas', wall === -1 ? 'play' : 'close']}/>}
+                color={wall === -1 ? "#00ff00" : "#555555"}
+                onPressMain={() => {
+                    if (wall !== -1) {
+                        setWall(-1);
+                    }
+                }}
+            />}
+
         </SafeAreaView>
     );
 }
