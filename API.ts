@@ -184,3 +184,22 @@ export const getTimeTable = async (mode?: string, offset?: number): Promise<Time
         });
     })
 }
+
+export const share = async (mode?: string, offset?: number): Promise<string> => {
+    const token = await getToken();
+    return new Promise((resolve, reject) => {
+        axios.post(`${baseUrl}/share`, {mode, offset}, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response) => {
+            if (response.data.success) {
+                resolve(response.data.link as string);
+            } else {
+                reject(response.data.error);
+            }
+        }).catch(error => {
+            reject("Błąd komunikacji z serwerem, " + error);
+        });
+    })
+}

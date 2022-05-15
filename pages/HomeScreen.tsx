@@ -1,6 +1,6 @@
 import {StatusBar} from 'expo-status-bar';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Dimensions, Pressable, ScrollView, Share, StyleSheet, Text, View} from 'react-native';
 import base64 from 'react-native-base64'
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {VictoryAxis, VictoryBar, VictoryChart, VictoryStack, VictoryTheme} from "victory-native";
@@ -10,7 +10,7 @@ import {CHARACTERISTIC_UUID, manager, SERVICE_UUID} from '../BLE';
 import {Characteristic} from 'react-native-ble-plx';
 import {clearToken, getToken, getWallBindings} from '../Storage';
 import {ChartTimeTable, RootStackParamList, Task, TimeTable, User} from '../types';
-import {getTasks, getTimeTable, me, saveTaskTime} from '../API';
+import {getTasks, getTimeTable, me, saveTaskTime, share} from '../API';
 import {SafeAreaView} from 'react-navigation';
 import {IconName} from "@fortawesome/fontawesome-common-types";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
@@ -282,6 +282,15 @@ export default function HomeScreen(props: Props) {
 
     const [selectedChartLabel, setSelectedChartLabel] = useState("");
 
+    const onShare = useCallback(() => {
+        share(timeTableMode, timeTableOffset).then(link => {
+            Share.share({
+                url: link,
+            })
+        }).catch(error => {
+        });
+    }, [timeTableMode, timeTableOffset])
+
     if (user == null) {
         return <View style={styles.container}>
             <ActivityIndicator/>
@@ -382,6 +391,7 @@ export default function HomeScreen(props: Props) {
                         justifyContent: 'center',
                         alignItems: 'center'
                     }}>
+                        <Text style={{flex: 1}}/>
                         <Pressable onPress={() => setTimeTableOffset(timeTableOffset + 1)}>
                             <FontAwesomeIcon icon={['fas', 'arrow-left']} color={'#fff'}/>
                         </Pressable>
@@ -391,8 +401,11 @@ export default function HomeScreen(props: Props) {
                             marginLeft: 10,
                             marginRight: 10
                         }}>{timeTableOffsetTitle}</Text>
-                        <Pressable onPress={() => setTimeTableOffset(timeTableOffset - 1)}>
+                        <Pressable onPress={() => setTimeTableOffset(timeTableOffset - 1)} style={{flex: 1}}>
                             <FontAwesomeIcon icon={['fas', 'arrow-right']} color={'#fff'}/>
+                        </Pressable>
+                        <Pressable onPress={onShare} style={{paddingRight: 15}}>
+                            <FontAwesomeIcon icon={['fas', 'share']} color={'#fff'}/>
                         </Pressable>
                     </View>
                     {displayMode == "CHART" && <View>
